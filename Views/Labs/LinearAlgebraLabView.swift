@@ -45,5 +45,6 @@ struct LinearAlgebraLabView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(MatrixTheme.surfacePrimary, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .tutorialOverlay(for: .linearAlgebra)
     }
 }

@@ -199,6 +199,7 @@ struct PerformanceLabView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: showInfo)
+        .tutorialOverlay(for: .performance)
     }
 
     // MARK: - Header
@@ -206,11 +207,11 @@ struct PerformanceLabView: View {
     private var headerSection: some View {
         VStack(spacing: 6) {
             Text("Cache Behavior Visualizer")
-                .font(MatrixTheme.titleFont(20))
+                .font(MatrixTheme.titleFont(22))
                 .foregroundColor(MatrixTheme.textPrimary)
 
             Text("Watch how memory access patterns affect performance")
-                .font(MatrixTheme.bodyFont(13))
+                .font(MatrixTheme.bodyFont(15))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -240,7 +241,7 @@ struct PerformanceLabView: View {
             // Step mode toggle
             Toggle(isOn: $stepMode) {
                 Text("Step Mode")
-                    .font(MatrixTheme.captionFont(12))
+                    .font(MatrixTheme.captionFont(14))
                     .foregroundColor(MatrixTheme.textSecondary)
             }
             .toggleStyle(SwitchToggleStyle(tint: MatrixTheme.level4Color))
@@ -262,7 +263,7 @@ struct PerformanceLabView: View {
                             Image(systemName: "forward.frame.fill")
                                 .font(.title3)
                             Text("Next Step")
-                                .font(MatrixTheme.bodyFont(13))
+                                .font(MatrixTheme.bodyFont(15))
                         }
                         .foregroundColor(MatrixTheme.level4Color)
                         .frame(height: 36)
@@ -329,7 +330,7 @@ struct PerformanceLabView: View {
                     // Speed control (hidden in step mode)
                     VStack(spacing: 2) {
                         Text("Speed")
-                            .font(MatrixTheme.captionFont(10))
+                            .font(MatrixTheme.captionFont(12))
                             .foregroundColor(MatrixTheme.textMuted)
                         Slider(value: $animationSpeed, in: 0.05...0.6)
                             .tint(MatrixTheme.level4Color)
@@ -397,7 +398,7 @@ struct PerformanceLabView: View {
     ) -> some View {
         VStack(spacing: 8) {
             Text(label)
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             // The grid
@@ -436,7 +437,7 @@ struct PerformanceLabView: View {
 
             // Memory address hint
             Text("0x\(isMatrixA ? "A" : "B")000 — row-major layout")
-                .font(MatrixTheme.captionFont(9))
+                .font(MatrixTheme.captionFont(11))
                 .foregroundColor(MatrixTheme.textMuted)
         }
         .labCard(accent: MatrixTheme.level4Color)
@@ -463,7 +464,7 @@ struct PerformanceLabView: View {
             // Coordinate label (only show on larger cells)
             if cellSize >= 26 {
                 Text("\(row)\(col)")
-                    .font(.system(size: 7, weight: .medium, design: .monospaced))
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
                     .foregroundColor(
                         isActive
                             ? Color.black.opacity(0.8)
@@ -500,7 +501,7 @@ struct PerformanceLabView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Memory Layout (Linear)")
-                    .font(MatrixTheme.captionFont(11))
+                    .font(MatrixTheme.captionFont(13))
                     .foregroundColor(MatrixTheme.textSecondary)
                 Spacer()
                 // Cache line highlight toggle
@@ -511,7 +512,7 @@ struct PerformanceLabView: View {
                         Image(systemName: showCacheLineHighlight ? "square.grid.3x3.fill" : "square.grid.3x3")
                             .font(.caption2)
                         Text("Cache Lines")
-                            .font(MatrixTheme.captionFont(10))
+                            .font(MatrixTheme.captionFont(12))
                     }
                     .foregroundColor(showCacheLineHighlight ? MatrixTheme.level4Color : MatrixTheme.textMuted)
                 }
@@ -528,7 +529,7 @@ struct PerformanceLabView: View {
             Text(memoryLayoutMode == .rowMajor
                  ? "Row-major: elements in the same row are contiguous in memory"
                  : "Column-major: elements in the same column are contiguous in memory")
-                .font(MatrixTheme.captionFont(9))
+                .font(MatrixTheme.captionFont(11))
                 .foregroundColor(MatrixTheme.textMuted)
 
             // The memory strip
@@ -563,7 +564,7 @@ struct PerformanceLabView: View {
                 legendItem(color: .cyan.opacity(0.4), label: "Row 1")
                 legendItem(color: .green.opacity(0.4), label: "Row 2")
                 Text("...")
-                    .font(MatrixTheme.captionFont(9))
+                    .font(MatrixTheme.captionFont(11))
                     .foregroundColor(MatrixTheme.textMuted)
                 if showCacheLineHighlight {
                     legendItem(color: MatrixTheme.level4Color, label: "Cache line")
@@ -579,7 +580,7 @@ struct PerformanceLabView: View {
                 .fill(color)
                 .frame(width: 10, height: 10)
             Text(label)
-                .font(MatrixTheme.captionFont(9))
+                .font(MatrixTheme.captionFont(11))
                 .foregroundColor(MatrixTheme.textMuted)
         }
     }
@@ -616,11 +617,11 @@ struct PerformanceLabView: View {
     private var cacheLineDetailCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Cache Line Utilization")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             Text("Each cache load brings 8 consecutive memory cells. How many are useful?")
-                .font(MatrixTheme.captionFont(9))
+                .font(MatrixTheme.captionFont(11))
                 .foregroundColor(MatrixTheme.textMuted)
 
             // The 8 cells of a cache line
@@ -635,11 +636,11 @@ struct PerformanceLabView: View {
                             .frame(height: 36)
                             .overlay(
                                 Text(isUsed ? "U" : "W")
-                                    .font(MatrixTheme.monoFont(10, weight: .bold))
+                                    .font(MatrixTheme.monoFont(12, weight: .bold))
                                     .foregroundColor(isUsed ? .black : MatrixTheme.textMuted)
                             )
                         Text("[\(cellIdx)]")
-                            .font(MatrixTheme.captionFont(8))
+                            .font(MatrixTheme.captionFont(10))
                             .foregroundColor(MatrixTheme.textMuted)
                     }
                 }
@@ -649,11 +650,11 @@ struct PerformanceLabView: View {
             HStack(spacing: 16) {
                 HStack(spacing: 4) {
                     Circle().fill(MatrixTheme.neonGreen.opacity(0.7)).frame(width: 8, height: 8)
-                    Text("Used").font(MatrixTheme.captionFont(9)).foregroundColor(MatrixTheme.textMuted)
+                    Text("Used").font(MatrixTheme.captionFont(11)).foregroundColor(MatrixTheme.textMuted)
                 }
                 HStack(spacing: 4) {
                     Circle().fill(MatrixTheme.neonOrange.opacity(0.5)).frame(width: 8, height: 8)
-                    Text("Wasted").font(MatrixTheme.captionFont(9)).foregroundColor(MatrixTheme.textMuted)
+                    Text("Wasted").font(MatrixTheme.captionFont(11)).foregroundColor(MatrixTheme.textMuted)
                 }
             }
 
@@ -662,11 +663,11 @@ struct PerformanceLabView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text("Utilization")
-                        .font(MatrixTheme.captionFont(10))
+                        .font(MatrixTheme.captionFont(12))
                         .foregroundColor(MatrixTheme.textSecondary)
                     Spacer()
                     Text(String(format: "%.0f%%", utilization * 100))
-                        .font(MatrixTheme.monoFont(13, weight: .bold))
+                        .font(MatrixTheme.monoFont(15, weight: .bold))
                         .foregroundColor(utilization > 0.5 ? MatrixTheme.neonGreen : MatrixTheme.neonOrange)
                 }
                 GeometryReader { geo in
@@ -686,7 +687,7 @@ struct PerformanceLabView: View {
             Text(memoryLayoutMode == .rowMajor
                  ? "Row-major + row access: all 8 cells in each cache line are used sequentially. Maximum cache efficiency!"
                  : "Column-major layout or column access: only 1 of 8 cells is needed per cache load. 87.5% of loaded data is wasted.")
-                .font(MatrixTheme.captionFont(9))
+                .font(MatrixTheme.captionFont(11))
                 .foregroundColor(MatrixTheme.textMuted)
                 .lineSpacing(2)
         }
@@ -713,7 +714,7 @@ struct PerformanceLabView: View {
     private var codeDisplaySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Algorithm Comparison")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             ViewThatFits(in: .horizontal) {
@@ -736,7 +737,7 @@ struct PerformanceLabView: View {
     private func codeBlock(title: String, lines: [CodeLine], highlightColor: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(MatrixTheme.captionFont(10))
+                .font(MatrixTheme.captionFont(12))
                 .foregroundColor(highlightColor)
                 .padding(.bottom, 2)
 
@@ -745,7 +746,7 @@ struct PerformanceLabView: View {
                     let isActive = isCodeLineActive(lineIndex: idx, totalLines: lines.count)
                     HStack(spacing: 4) {
                         Text(String(format: "%2d", idx + 1))
-                            .font(.system(size: 8, weight: .regular, design: .monospaced))
+                            .font(.system(size: 10, weight: .regular, design: .monospaced))
                             .foregroundColor(MatrixTheme.textMuted.opacity(0.5))
                             .frame(width: 14, alignment: .trailing)
 
@@ -788,23 +789,23 @@ struct PerformanceLabView: View {
             switch token.kind {
             case .keyword:
                 colored = Text(token.text)
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .foregroundColor(.blue)
             case .type, .number:
                 colored = Text(token.text)
-                    .font(.system(size: 10, weight: .regular, design: .monospaced))
+                    .font(.system(size: 12, weight: .regular, design: .monospaced))
                     .foregroundColor(.cyan)
             case .comment:
                 colored = Text(token.text)
-                    .font(.system(size: 10, weight: .regular, design: .monospaced))
+                    .font(.system(size: 12, weight: .regular, design: .monospaced))
                     .foregroundColor(.green.opacity(0.6))
             case .op:
                 colored = Text(token.text)
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundColor(.orange)
             case .plain:
                 colored = Text(token.text)
-                    .font(.system(size: 10, weight: .regular, design: .monospaced))
+                    .font(.system(size: 12, weight: .regular, design: .monospaced))
                     .foregroundColor(MatrixTheme.textSecondary)
             }
             result = result + colored
@@ -850,7 +851,7 @@ struct PerformanceLabView: View {
     private var fpsGauge: some View {
         VStack(spacing: 8) {
             Text("Simulated FPS")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             ZStack {
@@ -882,7 +883,7 @@ struct PerformanceLabView: View {
                         .foregroundColor(accentForMode)
                         .monospacedDigit()
                     Text("FPS")
-                        .font(MatrixTheme.captionFont(10))
+                        .font(MatrixTheme.captionFont(12))
                         .foregroundColor(MatrixTheme.textMuted)
                 }
                 .offset(y: 10)
@@ -938,7 +939,7 @@ struct PerformanceLabView: View {
     private var statisticsPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Cache Statistics")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             statRow(
@@ -961,11 +962,11 @@ struct PerformanceLabView: View {
 
             HStack {
                 Text("Hit Rate")
-                    .font(MatrixTheme.captionFont(12))
+                    .font(MatrixTheme.captionFont(14))
                     .foregroundColor(MatrixTheme.textSecondary)
                 Spacer()
                 Text(hitRateText)
-                    .font(MatrixTheme.monoFont(16, weight: .bold))
+                    .font(MatrixTheme.monoFont(18, weight: .bold))
                     .foregroundColor(hitRateColor)
                     .contentTransition(.numericText())
             }
@@ -982,11 +983,11 @@ struct PerformanceLabView: View {
                 .foregroundColor(color)
                 .font(.caption)
             Text(label)
-                .font(MatrixTheme.captionFont(12))
+                .font(MatrixTheme.captionFont(14))
                 .foregroundColor(MatrixTheme.textSecondary)
             Spacer()
             Text("\(value)")
-                .font(MatrixTheme.monoFont(16, weight: .semibold))
+                .font(MatrixTheme.monoFont(18, weight: .semibold))
                 .foregroundColor(color)
                 .contentTransition(.numericText())
         }
@@ -1023,7 +1024,7 @@ struct PerformanceLabView: View {
                 Image(systemName: "lightbulb.fill")
                     .foregroundColor(MatrixTheme.level4Color)
                 Text("Why does memory layout matter?")
-                    .font(MatrixTheme.captionFont(13))
+                    .font(MatrixTheme.captionFont(15))
                     .foregroundColor(MatrixTheme.level4Color)
             }
             .padding(.vertical, 10)
@@ -1046,7 +1047,7 @@ struct PerformanceLabView: View {
     private var benchmarkSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Real Benchmark")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             Button {
@@ -1061,7 +1062,7 @@ struct PerformanceLabView: View {
                             .foregroundColor(MatrixTheme.level4Color)
                     }
                     Text(isBenchmarking ? "Running..." : "Run Benchmark")
-                        .font(MatrixTheme.bodyFont(14))
+                        .font(MatrixTheme.bodyFont(16))
                         .foregroundColor(MatrixTheme.level4Color)
                 }
                 .frame(maxWidth: .infinity)
@@ -1087,7 +1088,7 @@ struct PerformanceLabView: View {
                         Text("Speedup")
                             .frame(width: 60, alignment: .trailing)
                     }
-                    .font(MatrixTheme.captionFont(10))
+                    .font(MatrixTheme.captionFont(12))
                     .foregroundColor(MatrixTheme.textMuted)
                     .padding(.bottom, 6)
 
@@ -1105,7 +1106,7 @@ struct PerformanceLabView: View {
                                 .foregroundColor(result.speedup > 1 ? MatrixTheme.neonGreen : MatrixTheme.textSecondary)
                                 .frame(width: 60, alignment: .trailing)
                         }
-                        .font(MatrixTheme.monoFont(13, weight: .medium))
+                        .font(MatrixTheme.monoFont(15, weight: .medium))
                         .padding(.vertical, 4)
 
                         if result.id != benchmarkResults.last?.id {
@@ -1146,6 +1147,14 @@ struct PerformanceLabView: View {
             }
             isBenchmarking = false
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            // Challenge detection
+            ChallengeManager.shared.complete("perf_run")
+            if benchmarkResults.contains(where: { $0.speedup >= 2.0 }) {
+                ChallengeManager.shared.complete("perf_blocked")
+            }
+            if benchmarkResults.contains(where: { $0.size == 512 }) {
+                ChallengeManager.shared.complete("perf_big")
+            }
         }
     }
 

@@ -79,7 +79,7 @@ private extension JordanTab {
             stepHeader(number: 1, title: "Matrix Input", icon: "square.grid.2x2")
 
             Text("Choose a 2\u{00D7}2 matrix to decompose. Tap a cell to cycle through values, or pick a preset below.")
-                .font(MatrixTheme.bodyFont(14))
+                .font(MatrixTheme.bodyFont(16))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -110,7 +110,7 @@ private extension JordanTab {
     func matrixCell(value: Double, onChange: @escaping (Double) -> Void) -> some View {
         let text = formatNum(value)
         return Text(text)
-            .font(MatrixTheme.monoFont(20, weight: .semibold))
+            .font(MatrixTheme.monoFont(22, weight: .semibold))
             .foregroundColor(MatrixTheme.textPrimary)
             .frame(width: 64, height: 40)
             .background(
@@ -180,7 +180,7 @@ private extension JordanTab {
                 Image(systemName: icon)
                     .font(.caption)
                 Text(name)
-                    .font(MatrixTheme.captionFont(11))
+                    .font(MatrixTheme.captionFont(13))
             }
             .foregroundColor(isActive ? MatrixTheme.background : accent)
             .padding(.horizontal, 12)
@@ -220,7 +220,7 @@ private extension JordanTab {
             stepHeader(number: 2, title: "Eigenvalue Computation", icon: "function")
 
             Text("We solve the characteristic equation det(A \u{2212} \u{03BB}I) = 0 to find eigenvalues.")
-                .font(MatrixTheme.bodyFont(14))
+                .font(MatrixTheme.bodyFont(16))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -246,11 +246,11 @@ private extension JordanTab {
 
         return VStack(alignment: .leading, spacing: 6) {
             Text("Characteristic polynomial:")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textMuted)
 
             Text("\u{03BB}\u{00B2} \(signTr) \(formatNum(abs(tr)))\u{03BB} \(signDet) \(formatNum(abs(det))) = 0")
-                .font(MatrixTheme.monoFont(16, weight: .semibold))
+                .font(MatrixTheme.monoFont(18, weight: .semibold))
                 .foregroundColor(accent)
                 .accessibilityLabel("Lambda squared \(signTr) \(formatNum(abs(tr))) lambda \(signDet) \(formatNum(abs(det))) equals zero")
         }
@@ -261,7 +261,7 @@ private extension JordanTab {
 
         return VStack(alignment: .leading, spacing: 8) {
             Text("Eigenvalues:")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textMuted)
 
             if matrix.hasRealEigenvalues {
@@ -272,16 +272,16 @@ private extension JordanTab {
 
                 if abs(ev.real1 - ev.real2) < 1e-10 {
                     Text("Repeated eigenvalue \u{2014} algebraic multiplicity 2")
-                        .font(MatrixTheme.captionFont(11))
+                        .font(MatrixTheme.captionFont(13))
                         .foregroundColor(MatrixTheme.neonOrange)
                 }
             } else {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Complex conjugate pair:")
-                        .font(MatrixTheme.captionFont(11))
+                        .font(MatrixTheme.captionFont(13))
                         .foregroundColor(MatrixTheme.textMuted)
                     Text("\(formatNum(ev.real1)) \u{00B1} \(formatNum(abs(ev.imag1)))i")
-                        .font(MatrixTheme.monoFont(16, weight: .semibold))
+                        .font(MatrixTheme.monoFont(18, weight: .semibold))
                         .foregroundColor(MatrixTheme.neonMagenta)
                 }
                 .accessibilityLabel("Complex eigenvalues: \(formatNum(ev.real1)) plus or minus \(formatNum(abs(ev.imag1))) i")
@@ -295,7 +295,7 @@ private extension JordanTab {
                 .fill(color)
                 .frame(width: 10, height: 10)
             Text("\(label) = \(value)")
-                .font(MatrixTheme.monoFont(15, weight: .semibold))
+                .font(MatrixTheme.monoFont(17, weight: .semibold))
                 .foregroundColor(MatrixTheme.textPrimary)
         }
         .accessibilityLabel("\(label) equals \(value)")
@@ -311,7 +311,7 @@ private extension JordanTab {
 
             if matrix.hasRealEigenvalues {
                 Text("Eigenvectors satisfy Av = \u{03BB}v. They define the directions preserved by the transformation.")
-                    .font(MatrixTheme.bodyFont(14))
+                    .font(MatrixTheme.bodyFont(16))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -322,7 +322,7 @@ private extension JordanTab {
                 eigenvectorDetails
             } else {
                 Text("This matrix has complex eigenvalues, so there are no real eigenvectors. The transformation is a rotation-scaling with no preserved real direction.")
-                    .font(MatrixTheme.bodyFont(14))
+                    .font(MatrixTheme.bodyFont(16))
                     .foregroundColor(MatrixTheme.neonMagenta)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -401,10 +401,10 @@ private extension JordanTab {
                             .fill(eigenColors[idx])
                             .frame(width: 8, height: 8)
                         Text("v\(idx + 1) = (\(formatNum(Double(vec.x))), \(formatNum(Double(vec.y))))")
-                            .font(MatrixTheme.monoFont(13, weight: .medium))
+                            .font(MatrixTheme.monoFont(15, weight: .medium))
                             .foregroundColor(MatrixTheme.textPrimary)
                         Text("for \u{03BB}=\(formatNum(lam))")
-                            .font(MatrixTheme.captionFont(11))
+                            .font(MatrixTheme.captionFont(13))
                             .foregroundColor(MatrixTheme.textMuted)
                     }
                     .accessibilityLabel("Eigenvector \(idx + 1): (\(formatNum(Double(vec.x))), \(formatNum(Double(vec.y)))) for eigenvalue \(formatNum(lam))")
@@ -414,7 +414,7 @@ private extension JordanTab {
                             .fill(eigenColors[idx])
                             .frame(width: 8, height: 8)
                         Text("No independent eigenvector for \u{03BB}=\(formatNum(lam))")
-                            .font(MatrixTheme.monoFont(13, weight: .medium))
+                            .font(MatrixTheme.monoFont(15, weight: .medium))
                             .foregroundColor(MatrixTheme.neonOrange)
                     }
                     .accessibilityLabel("No independent eigenvector for eigenvalue \(formatNum(lam))")
@@ -474,7 +474,7 @@ private extension JordanTab {
             stepHeader(number: 4, title: "Diagonalizability Check", icon: "checkmark.diamond")
 
             Text("A matrix is diagonalizable if it has enough linearly independent eigenvectors to form a basis.")
-                .font(MatrixTheme.bodyFont(14))
+                .font(MatrixTheme.bodyFont(16))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -497,7 +497,7 @@ private extension JordanTab {
                 .foregroundColor(diag ? MatrixTheme.neonGreen : MatrixTheme.neonOrange)
 
             Text(diag ? "DIAGONALIZABLE" : "NOT DIAGONALIZABLE")
-                .font(MatrixTheme.monoFont(16, weight: .bold))
+                .font(MatrixTheme.monoFont(18, weight: .bold))
                 .foregroundColor(diag ? MatrixTheme.neonGreen : MatrixTheme.neonOrange)
         }
         .padding(.vertical, 8)
@@ -537,7 +537,7 @@ private extension JordanTab {
                 .foregroundColor(accent)
                 .frame(width: 16)
             Text(text)
-                .font(MatrixTheme.bodyFont(13))
+                .font(MatrixTheme.bodyFont(15))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -553,7 +553,7 @@ private extension JordanTab {
 
             if let (jordan, _) = matrix.jordanDecomposition() {
                 Text("The Jordan form is the simplest matrix similar to A. It reveals the essential structure.")
-                    .font(MatrixTheme.bodyFont(14))
+                    .font(MatrixTheme.bodyFont(16))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -571,7 +571,7 @@ private extension JordanTab {
                 jordanStructureExplanation(jordan: jordan)
             } else {
                 Text("Jordan form over \u{211D} is not available for matrices with complex eigenvalues. The real canonical form would use a 2\u{00D7}2 rotation block instead.")
-                    .font(MatrixTheme.bodyFont(14))
+                    .font(MatrixTheme.bodyFont(16))
                     .foregroundColor(MatrixTheme.neonMagenta)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -615,7 +615,7 @@ private extension JordanTab {
 
             if let (jordan, changeBasis) = matrix.jordanDecomposition() {
                 Text("We verify the decomposition by showing that P\u{207B}\u{00B9}AP equals J. The change-of-basis matrix P has eigenvectors (or generalized eigenvectors) as columns.")
-                    .font(MatrixTheme.bodyFont(14))
+                    .font(MatrixTheme.bodyFont(16))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -647,7 +647,7 @@ private extension JordanTab {
                 verificationResult(jordan: jordan, changeBasis: changeBasis)
             } else {
                 Text("Verification requires real eigenvalues. For complex eigenvalues, the decomposition uses the real canonical form which is beyond the scope of this lab.")
-                    .font(MatrixTheme.bodyFont(14))
+                    .font(MatrixTheme.bodyFont(16))
                     .foregroundColor(MatrixTheme.neonMagenta)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -676,7 +676,7 @@ private extension JordanTab {
                 .foregroundColor(matches ? MatrixTheme.neonGreen : MatrixTheme.neonOrange)
 
             Text(matches ? "P\u{207B}\u{00B9}AP = J  \u{2714}" : "Verification requires a nonsingular P")
-                .font(MatrixTheme.monoFont(14, weight: .semibold))
+                .font(MatrixTheme.monoFont(16, weight: .semibold))
                 .foregroundColor(matches ? MatrixTheme.neonGreen : MatrixTheme.neonOrange)
         }
         .padding(.vertical, 6)
@@ -705,7 +705,7 @@ private extension JordanTab {
                         Image(systemName: "arrow.counterclockwise")
                         Text("Reset")
                     }
-                    .font(MatrixTheme.captionFont(13))
+                    .font(MatrixTheme.captionFont(15))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -738,7 +738,7 @@ private extension JordanTab {
                         Text("Next Step")
                         Image(systemName: "arrow.down.circle.fill")
                     }
-                    .font(MatrixTheme.monoFont(14, weight: .semibold))
+                    .font(MatrixTheme.monoFont(16, weight: .semibold))
                     .foregroundColor(MatrixTheme.background)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
@@ -756,7 +756,7 @@ private extension JordanTab {
                     Image(systemName: "checkmark.circle.fill")
                     Text("Decomposition Complete")
                 }
-                .font(MatrixTheme.monoFont(13, weight: .semibold))
+                .font(MatrixTheme.monoFont(15, weight: .semibold))
                 .foregroundColor(MatrixTheme.neonGreen)
                 .accessibilityLabel("All steps complete")
             }
@@ -775,7 +775,7 @@ private extension JordanTab {
                     .fill(accent)
                     .frame(width: 28, height: 28)
                 Text("\(number)")
-                    .font(MatrixTheme.monoFont(14, weight: .bold))
+                    .font(MatrixTheme.monoFont(16, weight: .bold))
                     .foregroundColor(MatrixTheme.background)
             }
 
@@ -784,7 +784,7 @@ private extension JordanTab {
                 .foregroundColor(accent)
 
             Text(title)
-                .font(MatrixTheme.titleFont(18))
+                .font(MatrixTheme.titleFont(20))
                 .foregroundColor(MatrixTheme.textPrimary)
 
             Spacer()

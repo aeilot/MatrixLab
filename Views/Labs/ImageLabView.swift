@@ -112,7 +112,7 @@ struct ImageLabView: View {
                         to: nil, from: nil, for: nil
                     )
                 }
-                .font(MatrixTheme.monoFont(14, weight: .semibold))
+                .font(MatrixTheme.monoFont(16, weight: .semibold))
                 .foregroundColor(accent)
             }
         }
@@ -140,6 +140,19 @@ struct ImageLabView: View {
         }
         .onChange(of: kernelFingerprint) { _ in
             Task { await applyFilter() }
+            // Challenge detection
+            if kernel.name == "Edge Detection" {
+                ChallengeManager.shared.complete("img_edge")
+            }
+            if kernel.name == "Custom" {
+                let sum = kernel.values.flatMap { $0 }.reduce(0, +)
+                if abs(sum - 1.0) < 0.01 {
+                    ChallengeManager.shared.complete("img_custom")
+                }
+            }
+            if kernel.values.flatMap({ $0 }).allSatisfy({ abs($0) < 0.001 }) {
+                ChallengeManager.shared.complete("img_zero")
+            }
         }
         .onChange(of: redWeight) { _ in
             Task { await applyFilter() }
@@ -153,6 +166,7 @@ struct ImageLabView: View {
         .onChange(of: photoPickerItem) { _ in
             Task { await loadUserPhoto() }
         }
+        .tutorialOverlay(for: .image)
     }
 
     // A hashable fingerprint of current kernel values for change detection.
@@ -224,13 +238,13 @@ struct ImageLabView: View {
 
     private var headerSection: some View {
         VStack(spacing: 6) {
-            Text("CONVOLUTION")
-                .font(MatrixTheme.captionFont(11))
+                Text("CONVOLUTION")
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(accent)
                 .tracking(4)
 
             Text("Slide a kernel across every pixel")
-                .font(MatrixTheme.bodyFont(14))
+                .font(MatrixTheme.bodyFont(16))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -245,7 +259,7 @@ struct ImageLabView: View {
                 Image(systemName: "photo.stack")
                     .foregroundColor(accent)
                 Text("Source Image")
-                    .font(MatrixTheme.monoFont(14, weight: .semibold))
+                    .font(MatrixTheme.monoFont(16, weight: .semibold))
                     .foregroundColor(MatrixTheme.textPrimary)
                 Spacer()
             }
@@ -304,7 +318,7 @@ struct ImageLabView: View {
                 .neonGlow(isActive ? accent : .clear, radius: isActive ? 4 : 0)
 
                 Text(source.label)
-                    .font(MatrixTheme.captionFont(10))
+                    .font(MatrixTheme.captionFont(12))
                     .foregroundColor(isActive ? MatrixTheme.textPrimary : MatrixTheme.textMuted)
             }
         }
@@ -338,7 +352,7 @@ struct ImageLabView: View {
                                 .font(.title3)
                                 .foregroundColor(accent)
                             Text("Add")
-                                .font(MatrixTheme.captionFont(9))
+                                .font(MatrixTheme.captionFont(11))
                                 .foregroundColor(accent.opacity(0.7))
                         }
                     }
@@ -355,7 +369,7 @@ struct ImageLabView: View {
             .accessibilityLabel("Upload your own photo")
 
             Text(currentUserPhoto != nil ? "Photo" : "Upload")
-                .font(MatrixTheme.captionFont(10))
+                .font(MatrixTheme.captionFont(12))
                 .foregroundColor(isActive ? MatrixTheme.textPrimary : MatrixTheme.textMuted)
         }
     }
@@ -421,8 +435,8 @@ struct ImageLabView: View {
                                 ProgressView()
                                     .tint(accent)
                                     .scaleEffect(0.7)
-                                Text("Processing...")
-                                    .font(MatrixTheme.captionFont(10))
+                Text("Processing...")
+                                    .font(MatrixTheme.captionFont(12))
                                     .foregroundColor(accent)
                             }
                             .padding(.horizontal, 10)
@@ -446,7 +460,7 @@ struct ImageLabView: View {
 
             // Kernel name label
             Text(kernel.name)
-                .font(MatrixTheme.monoFont(13, weight: .semibold))
+                .font(MatrixTheme.monoFont(15, weight: .semibold))
                 .foregroundColor(accent)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 4)
@@ -465,7 +479,7 @@ struct ImageLabView: View {
             action()
         } label: {
             Text(title)
-                .font(MatrixTheme.captionFont(12))
+                .font(MatrixTheme.captionFont(14))
                 .foregroundColor(isSelected ? MatrixTheme.textPrimary : MatrixTheme.textMuted)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
@@ -484,7 +498,7 @@ struct ImageLabView: View {
     private var presetButtonsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("PRESETS")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .tracking(2)
 
@@ -515,7 +529,7 @@ struct ImageLabView: View {
             }
         } label: {
             Text(preset.name)
-                .font(MatrixTheme.captionFont(12))
+                .font(MatrixTheme.captionFont(14))
                 .foregroundColor(isActive ? MatrixTheme.textPrimary : MatrixTheme.textSecondary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
@@ -543,11 +557,11 @@ struct ImageLabView: View {
                 Image(systemName: "square.grid.3x3")
                     .foregroundColor(accent)
                 Text("Kernel Editor")
-                    .font(MatrixTheme.monoFont(14, weight: .semibold))
+                    .font(MatrixTheme.monoFont(16, weight: .semibold))
                     .foregroundColor(MatrixTheme.textPrimary)
                 Spacer()
                 Text("3 \u{00D7} 3")
-                    .font(MatrixTheme.captionFont(11))
+                    .font(MatrixTheme.captionFont(13))
                     .foregroundColor(MatrixTheme.textMuted)
             }
 
@@ -597,7 +611,7 @@ struct ImageLabView: View {
                 }
             )
         )
-        .font(MatrixTheme.monoFont(16, weight: isCenter ? .bold : .medium))
+        .font(MatrixTheme.monoFont(18, weight: isCenter ? .bold : .medium))
         .foregroundColor(isCenter ? accent : MatrixTheme.textPrimary)
         .multilineTextAlignment(.center)
         .keyboardType(.numbersAndPunctuation)
@@ -625,7 +639,7 @@ struct ImageLabView: View {
         .overlay(alignment: .topTrailing) {
             if value != 0 {
                 Image(systemName: "info.circle")
-                    .font(.system(size: 8))
+                    .font(.system(size: 10))
                     .foregroundColor(accent.opacity(0.5))
                     .padding(2)
                     .tooltip("Weight applied to pixel at offset (\(row - 1), \(col - 1)) during convolution.")
@@ -641,7 +655,7 @@ struct ImageLabView: View {
                 Image(systemName: "paintpalette")
                     .foregroundColor(accent)
                 Text("Channel Weights")
-                    .font(MatrixTheme.monoFont(14, weight: .semibold))
+                    .font(MatrixTheme.monoFont(16, weight: .semibold))
                     .foregroundColor(MatrixTheme.textPrimary)
                 Spacer()
                 Button {
@@ -653,7 +667,7 @@ struct ImageLabView: View {
                     }
                 } label: {
                     Text("Reset")
-                        .font(MatrixTheme.captionFont(11))
+                        .font(MatrixTheme.captionFont(13))
                         .foregroundColor(MatrixTheme.textMuted)
                 }
             }
@@ -676,7 +690,7 @@ struct ImageLabView: View {
     ) -> some View {
         HStack(spacing: 12) {
             Text(label)
-                .font(MatrixTheme.monoFont(14, weight: .bold))
+                .font(MatrixTheme.monoFont(16, weight: .bold))
                 .foregroundColor(color)
                 .frame(width: 20)
 
@@ -686,7 +700,7 @@ struct ImageLabView: View {
                 .accessibilityValue(String(format: "%.2f", value.wrappedValue))
 
             Text(String(format: "%.2f", value.wrappedValue))
-                .font(MatrixTheme.monoFont(12))
+                .font(MatrixTheme.monoFont(14))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .frame(width: 40, alignment: .trailing)
         }
@@ -698,13 +712,13 @@ struct ImageLabView: View {
     private var formulaSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("THE MATH")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(accent)
                 .tracking(2)
 
             // General formula
             Text("O(x,y) = \u{03A3}\u{1D62} \u{03A3}\u{2C7C} K(i,j) \u{00B7} I(x+i, y+j)")
-                .font(MatrixTheme.monoFont(13))
+                .font(MatrixTheme.monoFont(15))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             // Expanded with actual kernel values
@@ -747,7 +761,7 @@ struct ImageLabView: View {
                 HStack(spacing: 0) {
                     // Leading prefix: "= " for first row, "+ " continuation otherwise
                     Text(rowIdx == 0 ? "= " : "  ")
-                        .font(MatrixTheme.monoFont(11))
+                        .font(MatrixTheme.monoFont(13))
                         .foregroundColor(MatrixTheme.textSecondary)
 
                     ForEach(Array(rowTerms.enumerated()), id: \.offset) { termIdx, term in
@@ -758,12 +772,12 @@ struct ImageLabView: View {
 
                         if !isFirst {
                             Text(" + ")
-                                .font(MatrixTheme.monoFont(11))
+                                .font(MatrixTheme.monoFont(13))
                                 .foregroundColor(MatrixTheme.textMuted)
                         }
 
                         Text("\(formatKernelValue(coeff))\u{00B7}\(label)")
-                            .font(MatrixTheme.monoFont(11))
+                            .font(MatrixTheme.monoFont(13))
                             .foregroundColor(isZero ? MatrixTheme.textMuted.opacity(0.5) : accent)
                     }
                 }
@@ -782,7 +796,7 @@ struct ImageLabView: View {
                 Image(systemName: "play.rectangle.on.rectangle")
                     .foregroundColor(accent)
                 Text("See It Step by Step")
-                    .font(MatrixTheme.monoFont(13, weight: .medium))
+                    .font(MatrixTheme.monoFont(15, weight: .medium))
                     .foregroundColor(MatrixTheme.textPrimary)
                 Spacer()
                 Image(systemName: "arrow.up.right.square")
@@ -805,7 +819,7 @@ struct ImageLabView: View {
                 Image(systemName: "brain.head.profile")
                     .foregroundColor(accent)
                 Text("How Convolution Works")
-                    .font(MatrixTheme.monoFont(13, weight: .medium))
+                    .font(MatrixTheme.monoFont(15, weight: .medium))
                     .foregroundColor(MatrixTheme.textPrimary)
                 Spacer()
                 Image(systemName: "chevron.right")
@@ -828,7 +842,7 @@ struct ImageLabView: View {
                         .foregroundColor(accent)
                         .font(.title2)
                     Text("Convolution & CNNs")
-                        .font(MatrixTheme.titleFont(20))
+                        .font(MatrixTheme.titleFont(22))
                         .foregroundColor(MatrixTheme.textPrimary)
                     Spacer()
                     Button { showInfo = false } label: {
@@ -893,10 +907,10 @@ struct ImageLabView: View {
     private func infoBlock(title: String, body: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(MatrixTheme.monoFont(14, weight: .semibold))
+                .font(MatrixTheme.monoFont(16, weight: .semibold))
                 .foregroundColor(accent)
             Text(body)
-                .font(MatrixTheme.bodyFont(14))
+                .font(MatrixTheme.bodyFont(16))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .lineSpacing(4)
         }
@@ -1362,7 +1376,7 @@ struct ConvolutionAnimationView: View {
                         stopTimer()
                         dismiss()
                     }
-                    .font(MatrixTheme.monoFont(14, weight: .semibold))
+                    .font(MatrixTheme.monoFont(16, weight: .semibold))
                     .foregroundColor(accent)
                 }
             }
@@ -1374,12 +1388,12 @@ struct ConvolutionAnimationView: View {
     private var headerView: some View {
         VStack(spacing: 6) {
             Text("SLIDING WINDOW")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(accent)
                 .tracking(4)
 
             Text("Watch the kernel slide across the input")
-                .font(MatrixTheme.bodyFont(14))
+                .font(MatrixTheme.bodyFont(16))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -1392,7 +1406,7 @@ struct ConvolutionAnimationView: View {
         HStack(alignment: .top, spacing: 20) {
             VStack(spacing: 8) {
                 Text("INPUT  5\u{00D7}5")
-                    .font(MatrixTheme.captionFont(10))
+                    .font(MatrixTheme.captionFont(12))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .tracking(1)
                 inputGrid
@@ -1404,14 +1418,14 @@ struct ConvolutionAnimationView: View {
                     .font(.title3)
                     .foregroundColor(accent.opacity(0.6))
                 Text(kernel.name)
-                    .font(MatrixTheme.captionFont(9))
+                    .font(MatrixTheme.captionFont(11))
                     .foregroundColor(MatrixTheme.textMuted)
                     .lineLimit(1)
             }
 
             VStack(spacing: 8) {
                 Text("OUTPUT  3\u{00D7}3")
-                    .font(MatrixTheme.captionFont(10))
+                    .font(MatrixTheme.captionFont(12))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .tracking(1)
                 outputGrid
@@ -1439,7 +1453,7 @@ struct ConvolutionAnimationView: View {
             && col >= currentCol && col < currentCol + 3
 
         return Text(String(Int(value)))
-            .font(MatrixTheme.monoFont(9, weight: .medium))
+            .font(MatrixTheme.monoFont(11, weight: .medium))
             .foregroundColor(
                 isInKernel ? MatrixTheme.textPrimary : MatrixTheme.textMuted
             )
@@ -1495,11 +1509,11 @@ struct ConvolutionAnimationView: View {
 
             if isComputed {
                 Text(String(Int(rawValue)))
-                    .font(MatrixTheme.monoFont(9, weight: .bold))
+                    .font(MatrixTheme.monoFont(11, weight: .bold))
                     .foregroundColor(MatrixTheme.textPrimary)
             } else if isCurrent {
                 Text("?")
-                    .font(MatrixTheme.monoFont(11, weight: .bold))
+                    .font(MatrixTheme.monoFont(13, weight: .bold))
                     .foregroundColor(accent)
             }
         }
@@ -1524,7 +1538,7 @@ struct ConvolutionAnimationView: View {
                 Image(systemName: "function")
                     .foregroundColor(accent)
                 Text("Dot Product at (\(currentRow), \(currentCol))")
-                    .font(MatrixTheme.monoFont(13, weight: .semibold))
+                    .font(MatrixTheme.monoFont(15, weight: .semibold))
                     .foregroundColor(MatrixTheme.textPrimary)
                 Spacer()
             }
@@ -1551,18 +1565,18 @@ struct ConvolutionAnimationView: View {
                                             : MatrixTheme.textMuted
                                     )
                             }
-                            .font(MatrixTheme.monoFont(10))
+                            .font(MatrixTheme.monoFont(12))
 
                             if kCol < 2 {
                                 Text("+")
-                                    .font(MatrixTheme.monoFont(10))
+                                    .font(MatrixTheme.monoFont(12))
                                     .foregroundColor(MatrixTheme.textMuted)
                             }
                         }
 
                         if kRow < 2 {
                             Text("+")
-                                .font(MatrixTheme.monoFont(10))
+                                .font(MatrixTheme.monoFont(12))
                                 .foregroundColor(MatrixTheme.textMuted)
                         }
                     }
@@ -1573,10 +1587,10 @@ struct ConvolutionAnimationView: View {
             let dotResult = computeDotProduct(row: currentRow, col: currentCol)
             HStack(spacing: 4) {
                 Text("=")
-                    .font(MatrixTheme.monoFont(14, weight: .bold))
+                    .font(MatrixTheme.monoFont(16, weight: .bold))
                     .foregroundColor(MatrixTheme.textSecondary)
                 Text(String(format: "%.1f", dotResult))
-                    .font(MatrixTheme.monoFont(16, weight: .bold))
+                    .font(MatrixTheme.monoFont(18, weight: .bold))
                     .foregroundColor(accent)
             }
             .padding(.top, 4)
@@ -1623,7 +1637,7 @@ struct ConvolutionAnimationView: View {
                 reset()
             } label: {
                 Label("Reset", systemImage: "arrow.counterclockwise")
-                    .font(MatrixTheme.monoFont(13, weight: .medium))
+                    .font(MatrixTheme.monoFont(15, weight: .medium))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
@@ -1647,7 +1661,7 @@ struct ConvolutionAnimationView: View {
                     isPlaying ? "Pause" : "Play",
                     systemImage: isPlaying ? "pause.fill" : "play.fill"
                 )
-                .font(MatrixTheme.monoFont(13, weight: .semibold))
+                .font(MatrixTheme.monoFont(15, weight: .semibold))
                 .foregroundColor(MatrixTheme.textPrimary)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
@@ -1669,7 +1683,7 @@ struct ConvolutionAnimationView: View {
                 step()
             } label: {
                 Label("Step", systemImage: "forward.frame.fill")
-                    .font(MatrixTheme.monoFont(13, weight: .medium))
+                    .font(MatrixTheme.monoFont(15, weight: .medium))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)

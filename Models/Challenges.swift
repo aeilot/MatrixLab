@@ -10,6 +10,41 @@ struct LabChallenge: Identifiable {
     let icon: String
 }
 
+// MARK: - Challenge Completion Manager
+
+@MainActor
+final class ChallengeManager: ObservableObject {
+    static let shared = ChallengeManager()
+
+    @Published private var completedIDs: Set<String>
+
+    private init() {
+        let saved = UserDefaults.standard.stringArray(forKey: "completedChallenges") ?? []
+        completedIDs = Set(saved)
+    }
+
+    func isCompleted(_ id: String) -> Bool {
+        completedIDs.contains(id)
+    }
+
+    /// Mark a challenge as completed. Returns `true` if this is a NEW completion.
+    @discardableResult
+    func complete(_ id: String) -> Bool {
+        guard !completedIDs.contains(id) else { return false }
+        completedIDs.insert(id)
+        UserDefaults.standard.set(Array(completedIDs), forKey: "completedChallenges")
+        return true
+    }
+
+    func completedCount(for level: LabLevel) -> Int {
+        ChallengeData.challenges(for: level).filter { isCompleted($0.id) }.count
+    }
+
+    func totalCount(for level: LabLevel) -> Int {
+        ChallengeData.challenges(for: level).count
+    }
+}
+
 // MARK: - Discovery Model
 
 struct LabDiscovery: Identifiable {
@@ -97,10 +132,15 @@ enum CalloutData {
 struct ChallengesView: View {
     let level: LabLevel
     @State private var isExpanded = false
+    @ObservedObject private var manager = ChallengeManager.shared
+
+    private var challenges: [LabChallenge] {
+        ChallengeData.challenges(for: level)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header with expand/collapse
+            // Header with expand/collapse + progress
             Button { isExpanded.toggle() } label: {
                 HStack {
                     Image(systemName: "flag.checkered")
@@ -108,6 +148,11 @@ struct ChallengesView: View {
                     Text("CHALLENGES")
                         .font(MatrixTheme.captionFont())
                         .foregroundColor(level.accentColor)
+
+                    Text("\(manager.completedCount(for: level))/\(manager.totalCount(for: level))")
+                        .font(MatrixTheme.captionFont())
+                        .foregroundColor(MatrixTheme.textMuted)
+
                     Spacer()
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .foregroundColor(MatrixTheme.textMuted)
@@ -115,17 +160,18 @@ struct ChallengesView: View {
             }
 
             if isExpanded {
-                ForEach(ChallengeData.challenges(for: level)) { challenge in
+                ForEach(challenges) { challenge in
+                    let done = manager.isCompleted(challenge.id)
                     HStack(spacing: 12) {
-                        Image(systemName: challenge.icon)
-                            .foregroundColor(level.accentColor.opacity(0.7))
+                        Image(systemName: done ? "checkmark.circle.fill" : challenge.icon)
+                            .foregroundColor(done ? MatrixTheme.neonGreen : level.accentColor.opacity(0.7))
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(challenge.title)
-                                .font(MatrixTheme.monoFont(14, weight: .semibold))
-                                .foregroundColor(MatrixTheme.textPrimary)
+                                .font(MatrixTheme.monoFont(16, weight: .semibold))
+                                .foregroundColor(done ? MatrixTheme.neonGreen : MatrixTheme.textPrimary)
                             Text(challenge.description)
-                                .font(MatrixTheme.bodyFont(12))
+                                .font(MatrixTheme.bodyFont(14))
                                 .foregroundColor(MatrixTheme.textSecondary)
                         }
                         Spacer()
@@ -152,11 +198,11 @@ struct DiscoveryBanner: View {
                     Image(systemName: "sparkles")
                         .foregroundColor(color)
                     Text(title)
-                        .font(MatrixTheme.monoFont(14, weight: .bold))
+                        .font(MatrixTheme.monoFont(16, weight: .bold))
                         .foregroundColor(color)
                 }
                 Text(message)
-                    .font(MatrixTheme.bodyFont(12))
+                    .font(MatrixTheme.bodyFont(14))
                     .foregroundColor(MatrixTheme.textSecondary)
             }
             .padding(12)
@@ -203,7 +249,7 @@ struct DidYouKnowCard: View {
             }
 
             Text(callouts[currentIndex])
-                .font(MatrixTheme.bodyFont(13))
+                .font(MatrixTheme.bodyFont(15))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .lineSpacing(3)
         }

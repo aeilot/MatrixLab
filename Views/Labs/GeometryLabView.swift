@@ -82,6 +82,16 @@ struct GeometryLabView: View {
         .sheet(isPresented: $showInfo) {
             infoSheet
         }
+        .onReceive(matrix.objectWillChange) { _ in
+            DispatchQueue.main.async {
+                let det = matrix.determinant
+                let eps = 0.05
+                if abs(det - 2.0) < eps { ChallengeManager.shared.complete("geo_det2") }
+                if abs(det + 1.0) < eps { ChallengeManager.shared.complete("geo_reflect") }
+                if abs(det) < eps { ChallengeManager.shared.complete("geo_singular") }
+            }
+        }
+        .tutorialOverlay(for: .geometry)
     }
 }
 
@@ -244,7 +254,7 @@ private extension GeometryLabView {
 
         context.draw(
             Text(detText)
-                .font(MatrixTheme.monoFont(14, weight: .bold))
+                .font(MatrixTheme.monoFont(16, weight: .bold))
                 .foregroundColor(detColor),
             at: centroid
         )
@@ -304,7 +314,7 @@ private extension GeometryLabView {
 
             // Label
             Text(label)
-                .font(MatrixTheme.monoFont(14, weight: .bold))
+                .font(MatrixTheme.monoFont(16, weight: .bold))
                 .foregroundColor(color)
                 .neonGlow(color, radius: 4)
                 .position(
@@ -401,7 +411,8 @@ private extension GeometryLabView {
 
 private extension GeometryLabView {
     var hudTopBar: some View {
-        HStack(alignment: .top) {
+        HStack {
+            Spacer()
             // Matrix display
             VStack(alignment: .leading, spacing: 8) {
                 MatrixDisplayView(
@@ -418,7 +429,7 @@ private extension GeometryLabView {
                         .foregroundColor(MatrixTheme.textMuted)
 
                     Text(formatDeterminant(matrix.determinant))
-                        .font(MatrixTheme.monoFont(16, weight: .semibold))
+                        .font(MatrixTheme.monoFont(18, weight: .semibold))
                         .foregroundColor(determinantColor)
                 }
                 .padding(.leading, 4)
@@ -428,7 +439,6 @@ private extension GeometryLabView {
                 .tooltip("The determinant measures how the transformation scales area. Negative means orientation is flipped.")
             }
             .labCard(accent: MatrixTheme.level1Color)
-
             Spacer()
         }
     }
@@ -519,7 +529,7 @@ private extension GeometryLabView {
                 Image(systemName: icon)
                     .font(.caption)
                 Text(name)
-                    .font(MatrixTheme.captionFont(12))
+                    .font(MatrixTheme.captionFont(14))
             }
             .foregroundColor(isActive ? MatrixTheme.background : MatrixTheme.neonCyan)
             .padding(.horizontal, 14)
@@ -653,16 +663,17 @@ private extension GeometryLabView {
                     .foregroundColor(color)
                     .font(.headline)
                 Text(title)
-                    .font(MatrixTheme.monoFont(16, weight: .semibold))
+                    .font(MatrixTheme.monoFont(18, weight: .semibold))
                     .foregroundColor(MatrixTheme.textPrimary)
             }
 
             Text(text)
-                .font(MatrixTheme.bodyFont(14))
+                .font(MatrixTheme.bodyFont(16))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .labCard(accent: color)
     }
 }

@@ -45,7 +45,7 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.5), value: showOnboarding)
         .onAppear {
             if showOnboarding == nil {
-                showOnboarding = !hasCompletedOnboarding
+                showOnboarding = true
             }
         }
     }

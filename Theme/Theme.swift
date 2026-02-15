@@ -33,15 +33,15 @@ enum MatrixTheme {
         .system(size: size, weight: weight, design: .monospaced)
     }
     
-    static func titleFont(_ size: CGFloat = 28) -> Font {
+    static func titleFont(_ size: CGFloat = 32) -> Font {
         .system(size: size, weight: .bold, design: .monospaced)
     }
     
-    static func bodyFont(_ size: CGFloat = 16) -> Font {
+    static func bodyFont(_ size: CGFloat = 18) -> Font {
         .system(size: size, weight: .regular, design: .rounded)
     }
     
-    static func captionFont(_ size: CGFloat = 13) -> Font {
+    static func captionFont(_ size: CGFloat = 15) -> Font {
         .system(size: size, weight: .medium, design: .monospaced)
     }
     
@@ -126,7 +126,7 @@ struct MatrixDisplayView: View {
                         HStack(spacing: 12) {
                             ForEach(0..<values[row].count, id: \.self) { col in
                                 Text(formatValue(values[row][col]))
-                                    .font(MatrixTheme.monoFont(18, weight: .semibold))
+                                    .font(MatrixTheme.monoFont(20, weight: .semibold))
                                     .foregroundColor(MatrixTheme.textPrimary)
                                     .frame(minWidth: 50)
                             }
@@ -188,7 +188,7 @@ struct TooltipModifier: ViewModifier {
             }
             .popover(isPresented: $showTooltip) {
                 Text(explanation)
-                    .font(MatrixTheme.bodyFont(13))
+                    .font(MatrixTheme.bodyFont(15))
                     .foregroundColor(MatrixTheme.textPrimary)
                     .padding(12)
                     .frame(maxWidth: 260)
@@ -232,7 +232,7 @@ struct InfoPopupView: View {
             }
             
             Text(content)
-                .font(MatrixTheme.bodyFont(14))
+                .font(MatrixTheme.bodyFont(16))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .lineSpacing(4)
         }

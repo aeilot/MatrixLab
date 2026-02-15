@@ -59,25 +59,25 @@ struct AboutMeView: View {
                     )
                 
                 Image(systemName: "person.circle.fill")
-                    .font(.system(size: 56))
+                    .font(.system(size: 58))
                     .foregroundColor(MatrixTheme.neonCyan.opacity(0.7))
             }
             .neonGlow(MatrixTheme.neonCyan, radius: 8)
             
             VStack(spacing: 6) {
                 Text("[YOUR NAME]")
-                    .font(MatrixTheme.titleFont(24))
+                    .font(MatrixTheme.titleFont(26))
                     .foregroundColor(MatrixTheme.textPrimary)
                 
                 Text("[YOUR TITLE / SCHOOL]")
-                    .font(MatrixTheme.monoFont(14, weight: .medium))
+                    .font(MatrixTheme.monoFont(16, weight: .medium))
                     .foregroundColor(MatrixTheme.neonCyan)
                 
                 HStack(spacing: 6) {
                     Image(systemName: "building.columns.fill")
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                     Text("[YOUR INSTITUTION]")
-                        .font(MatrixTheme.captionFont(13))
+                        .font(MatrixTheme.captionFont(15))
                 }
                 .foregroundColor(MatrixTheme.textSecondary)
                 .padding(.top, 2)
@@ -93,7 +93,7 @@ struct AboutMeView: View {
         VStack(alignment: .leading, spacing: 14) {
             Label {
                 Text("Why I Built MatrixLab")
-                    .font(MatrixTheme.monoFont(17, weight: .bold))
+                    .font(MatrixTheme.monoFont(19, weight: .bold))
                     .foregroundColor(MatrixTheme.textPrimary)
             } icon: {
                 Image(systemName: "lightbulb.fill")
@@ -102,17 +102,17 @@ struct AboutMeView: View {
             
             VStack(alignment: .leading, spacing: 12) {
                 Text("[Describe what first sparked your interest in mathematics, coding, or technology. What moment made you realize you wanted to build things?]")
-                    .font(MatrixTheme.bodyFont(15))
+                    .font(MatrixTheme.bodyFont(17))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .lineSpacing(4)
                 
                 Text("[Explain why you built MatrixLab specifically. What problem did you want to solve? What insight did you want to share with others?]")
-                    .font(MatrixTheme.bodyFont(15))
+                    .font(MatrixTheme.bodyFont(17))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .lineSpacing(4)
                 
                 Text("[Share your vision. Where do you see yourself going? How does this project connect to your broader goals?]")
-                    .font(MatrixTheme.bodyFont(15))
+                    .font(MatrixTheme.bodyFont(17))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .lineSpacing(4)
             }
@@ -127,7 +127,7 @@ struct AboutMeView: View {
         VStack(alignment: .leading, spacing: 14) {
             Label {
                 Text("Matrices in My Research")
-                    .font(MatrixTheme.monoFont(17, weight: .bold))
+                    .font(MatrixTheme.monoFont(19, weight: .bold))
                     .foregroundColor(MatrixTheme.textPrimary)
             } icon: {
                 Image(systemName: "flask.fill")
@@ -170,20 +170,20 @@ struct AboutMeView: View {
         VStack(spacing: 12) {
             HStack(spacing: 6) {
                 Text("MatrixLab")
-                    .font(MatrixTheme.monoFont(14, weight: .bold))
+                    .font(MatrixTheme.monoFont(16, weight: .bold))
                     .foregroundColor(MatrixTheme.neonCyan)
                 
                 Text("×")
-                    .font(MatrixTheme.monoFont(12, weight: .light))
+                    .font(MatrixTheme.monoFont(14, weight: .light))
                     .foregroundColor(MatrixTheme.textMuted)
                 
                 Image(systemName: "swift")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.orange)
             }
             
             Text("Built with SwiftUI for Swift Student Challenge 2025")
-                .font(MatrixTheme.captionFont(12))
+                .font(MatrixTheme.captionFont(14))
                 .foregroundColor(MatrixTheme.textMuted)
                 .multilineTextAlignment(.center)
         }
@@ -210,27 +210,27 @@ private struct ResearchConnectionCard: View {
                     .frame(width: 40, height: 40)
                 
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(color)
             }
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text(matrixTopic)
-                        .font(MatrixTheme.monoFont(14, weight: .semibold))
+                        .font(MatrixTheme.monoFont(16, weight: .semibold))
                         .foregroundColor(color)
                     
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundColor(MatrixTheme.textMuted)
                     
                     Text(application)
-                        .font(MatrixTheme.monoFont(13, weight: .medium))
+                        .font(MatrixTheme.monoFont(15, weight: .medium))
                         .foregroundColor(MatrixTheme.textPrimary)
                 }
                 
                 Text(detail)
-                    .font(MatrixTheme.bodyFont(13))
+                    .font(MatrixTheme.bodyFont(15))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .lineSpacing(2)
             }

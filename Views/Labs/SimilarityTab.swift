@@ -68,16 +68,16 @@ private extension SimilarityTab {
         VStack(spacing: 8) {
             HStack(spacing: 4) {
                 Text(mode == .similarity ? "B = P\u{207B}\u{00B9}AP" : "B = P\u{1D40}AP")
-                    .font(MatrixTheme.monoFont(14, weight: .semibold))
+                    .font(MatrixTheme.monoFont(16, weight: .semibold))
                     .foregroundColor(accent)
                 Spacer()
                 if mode == .similarity {
                     Text("Same transform, different coordinates")
-                        .font(MatrixTheme.captionFont(11))
+                        .font(MatrixTheme.captionFont(13))
                         .foregroundColor(MatrixTheme.textMuted)
                 } else {
                     Text("Same conic, different coordinates")
-                        .font(MatrixTheme.captionFont(11))
+                        .font(MatrixTheme.captionFont(13))
                         .foregroundColor(MatrixTheme.textMuted)
                 }
             }
@@ -93,7 +93,7 @@ private extension SimilarityTab {
     func canvasCard(label: String, matrix: Matrix2x2?, isLeft: Bool) -> some View {
         VStack(spacing: 4) {
             Text("Matrix \(label)")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             GeometryReader { geo in
@@ -119,7 +119,7 @@ private extension SimilarityTab {
                                 .font(.title3)
                                 .foregroundColor(MatrixTheme.neonOrange)
                             Text("P is singular")
-                                .font(MatrixTheme.captionFont(11))
+                                .font(MatrixTheme.captionFont(13))
                                 .foregroundColor(MatrixTheme.neonOrange)
                         }
                     }
@@ -157,7 +157,7 @@ private extension SimilarityTab {
                     .frame(width: 36)
             }
         }
-        .font(MatrixTheme.monoFont(11, weight: .medium))
+        .font(MatrixTheme.monoFont(13, weight: .medium))
         .foregroundColor(MatrixTheme.textSecondary)
     }
 
@@ -347,7 +347,7 @@ private extension SimilarityTab {
     func matrixEditor(label: String, matrix: Matrix2x2, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             VStack(spacing: 4) {
@@ -363,7 +363,7 @@ private extension SimilarityTab {
 
             if matrix === matrixP {
                 Text("det(P) = \(formatNum(matrixP.determinant))")
-                    .font(MatrixTheme.captionFont(10))
+                    .font(MatrixTheme.captionFont(12))
                     .foregroundColor(
                         abs(matrixP.determinant) < 1e-10
                             ? MatrixTheme.neonOrange
@@ -383,13 +383,13 @@ private extension SimilarityTab {
                 }
             } label: {
                 Image(systemName: "minus")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundColor(MatrixTheme.textMuted)
                     .frame(width: 22, height: 32)
             }
 
             Text(formatNum(value))
-                .font(MatrixTheme.monoFont(15, weight: .semibold))
+                .font(MatrixTheme.monoFont(17, weight: .semibold))
                 .foregroundColor(MatrixTheme.textPrimary)
                 .frame(width: 36, height: 32)
                 .onTapGesture {
@@ -403,7 +403,7 @@ private extension SimilarityTab {
                 }
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundColor(MatrixTheme.textMuted)
                     .frame(width: 22, height: 32)
             }
@@ -447,7 +447,7 @@ private extension SimilarityTab {
                 Image(systemName: "eye.fill")
                     .foregroundColor(accent)
                 Text("Invariant Spotlight")
-                    .font(MatrixTheme.titleFont(16))
+                    .font(MatrixTheme.titleFont(18))
                     .foregroundColor(MatrixTheme.textPrimary)
                 Spacer()
             }
@@ -455,7 +455,7 @@ private extension SimilarityTab {
             Text(mode == .similarity
                  ? "Similarity preserves the characteristic polynomial."
                  : "Congruence preserves the signature of the quadratic form.")
-                .font(MatrixTheme.bodyFont(13))
+                .font(MatrixTheme.bodyFont(15))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -479,7 +479,7 @@ private extension SimilarityTab {
         return VStack(alignment: .leading, spacing: 8) {
             // Preserved (green)
             Text("PRESERVED")
-                .font(MatrixTheme.captionFont(10))
+                .font(MatrixTheme.captionFont(12))
                 .foregroundColor(MatrixTheme.neonGreen)
                 .tracking(1)
 
@@ -537,7 +537,7 @@ private extension SimilarityTab {
 
             // Changed (orange)
             Text("CHANGED")
-                .font(MatrixTheme.captionFont(10))
+                .font(MatrixTheme.captionFont(12))
                 .foregroundColor(MatrixTheme.neonOrange)
                 .tracking(1)
 
@@ -562,7 +562,7 @@ private extension SimilarityTab {
         return VStack(alignment: .leading, spacing: 8) {
             // Preserved
             Text("PRESERVED")
-                .font(MatrixTheme.captionFont(10))
+                .font(MatrixTheme.captionFont(12))
                 .foregroundColor(MatrixTheme.neonGreen)
                 .tracking(1)
 
@@ -588,7 +588,7 @@ private extension SimilarityTab {
 
             // Changed
             Text("CHANGED")
-                .font(MatrixTheme.captionFont(10))
+                .font(MatrixTheme.captionFont(12))
                 .foregroundColor(MatrixTheme.neonOrange)
                 .tracking(1)
 
@@ -612,18 +612,18 @@ private extension SimilarityTab {
                 .frame(width: 8, height: 8)
 
             Text(label)
-                .font(MatrixTheme.captionFont(12))
+                .font(MatrixTheme.captionFont(14))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .frame(width: 70, alignment: .leading)
 
             Text("A: \(valueA)")
-                .font(MatrixTheme.monoFont(12, weight: .medium))
+                .font(MatrixTheme.monoFont(14, weight: .medium))
                 .foregroundColor(MatrixTheme.textPrimary)
 
             Spacer()
 
             Text("B: \(valueB)")
-                .font(MatrixTheme.monoFont(12, weight: .medium))
+                .font(MatrixTheme.monoFont(14, weight: .medium))
                 .foregroundColor(preserved ? MatrixTheme.neonGreen : MatrixTheme.neonOrange)
 
             if preserved {
@@ -643,12 +643,12 @@ private extension SimilarityTab {
                 .frame(width: 8, height: 8)
 
             Text(label)
-                .font(MatrixTheme.captionFont(12))
+                .font(MatrixTheme.captionFont(14))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .frame(width: 70, alignment: .leading)
 
             Text(detail)
-                .font(MatrixTheme.monoFont(11, weight: .medium))
+                .font(MatrixTheme.monoFont(13, weight: .medium))
                 .foregroundColor(MatrixTheme.neonOrange.opacity(0.8))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -680,7 +680,7 @@ private extension SimilarityTab {
     var presetRow: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Presets for A")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textSecondary)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -725,7 +725,7 @@ private extension SimilarityTab {
                 Image(systemName: icon)
                     .font(.caption)
                 Text(name)
-                    .font(MatrixTheme.captionFont(11))
+                    .font(MatrixTheme.captionFont(13))
             }
             .foregroundColor(isActive ? MatrixTheme.background : accent)
             .padding(.horizontal, 12)

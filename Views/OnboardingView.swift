@@ -68,7 +68,7 @@ private struct MatrixRainView: View {
                     let opacityVal = 0.08 + 0.12 * Double((col + row * 3) % 5) / 4.0
                     
                     let text = Text(char)
-                        .font(.system(size: 14, weight: .regular, design: .monospaced))
+                        .font(.system(size: 16, weight: .regular, design: .monospaced))
                         .foregroundColor(MatrixTheme.neonCyan.opacity(opacityVal))
                     
                     let resolved = context.resolve(text)
@@ -173,7 +173,7 @@ struct OnboardingView: View {
                     }
                 } label: {
                     Text("Skip")
-                        .font(MatrixTheme.captionFont(12))
+                        .font(MatrixTheme.captionFont(14))
                         .foregroundColor(MatrixTheme.textMuted)
                 }
                 .padding(.trailing, 20)
@@ -232,7 +232,7 @@ struct OnboardingView: View {
                         .opacity(titleOpacity)
                     
                     Text("Unbox the Black Box")
-                        .font(MatrixTheme.monoFont(18, weight: .medium))
+                        .font(MatrixTheme.monoFont(20, weight: .medium))
                         .foregroundColor(MatrixTheme.neonCyan)
                         .opacity(subtitleOpacity)
                 }
@@ -242,7 +242,7 @@ struct OnboardingView: View {
                 // Tagline
                 VStack(spacing: 28) {
                     Text("Matrices aren't just numbers in a grid.\nThey are transformations that shape our world.")
-                        .font(MatrixTheme.bodyFont(16))
+                        .font(MatrixTheme.bodyFont(18))
                         .foregroundColor(MatrixTheme.textSecondary)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)
@@ -256,9 +256,9 @@ struct OnboardingView: View {
                     } label: {
                         HStack(spacing: 8) {
                             Text("Begin")
-                                .font(MatrixTheme.monoFont(17, weight: .semibold))
+                                .font(MatrixTheme.monoFont(19, weight: .semibold))
                             Image(systemName: "arrow.right")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(size: 16, weight: .semibold))
                         }
                         .foregroundColor(MatrixTheme.background)
                         .padding(.horizontal, 40)
@@ -294,7 +294,7 @@ struct OnboardingView: View {
                         .foregroundColor(MatrixTheme.textPrimary)
                     
                     Text("Three levels. One insight at each stage.")
-                        .font(MatrixTheme.bodyFont(15))
+                        .font(MatrixTheme.bodyFont(17))
                         .foregroundColor(MatrixTheme.textSecondary)
                     
                     VStack(spacing: 16) {
@@ -309,10 +309,10 @@ struct OnboardingView: View {
                     // Swipe hint
                     HStack(spacing: 6) {
                         Text("Swipe to continue")
-                            .font(MatrixTheme.captionFont(12))
+                            .font(MatrixTheme.captionFont(14))
                             .foregroundColor(MatrixTheme.textMuted)
                         Image(systemName: "chevron.right.2")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(MatrixTheme.textMuted)
                     }
                     
@@ -377,7 +377,7 @@ struct OnboardingView: View {
                         )
                     
                     Image(systemName: "play.fill")
-                        .font(.system(size: 36))
+                        .font(.system(size: 38))
                         .foregroundColor(MatrixTheme.neonCyan)
                         .offset(x: 3) // visual centering for play icon
                 }
@@ -405,9 +405,9 @@ struct OnboardingView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.right.circle.fill")
-                            .font(.system(size: 18))
+                            .font(.system(size: 20))
                         Text("Enter the Lab")
-                            .font(MatrixTheme.monoFont(17, weight: .semibold))
+                            .font(MatrixTheme.monoFont(19, weight: .semibold))
                     }
                     .foregroundColor(MatrixTheme.background)
                     .frame(maxWidth: 280)
@@ -461,7 +461,7 @@ private struct NarrativeCard: View {
                     .frame(width: 56, height: 56)
                 
                 Image(systemName: level.icon)
-                    .font(.system(size: 22, weight: .medium))
+                    .font(.system(size: 24, weight: .medium))
                     .foregroundColor(level.accentColor)
             }
             .neonGlow(level.accentColor, radius: 4)
@@ -469,7 +469,7 @@ private struct NarrativeCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Text("Level \(level.rawValue)")
-                        .font(MatrixTheme.captionFont(11))
+                        .font(MatrixTheme.captionFont(13))
                         .foregroundColor(level.accentColor)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
@@ -478,12 +478,12 @@ private struct NarrativeCard: View {
                         )
                     
                     Text(level.subtitle)
-                        .font(MatrixTheme.monoFont(15, weight: .bold))
+                        .font(MatrixTheme.monoFont(17, weight: .bold))
                         .foregroundColor(MatrixTheme.textPrimary)
                 }
                 
                 Text(level.tagline)
-                    .font(MatrixTheme.bodyFont(14))
+                    .font(MatrixTheme.bodyFont(16))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .lineSpacing(2)
             }

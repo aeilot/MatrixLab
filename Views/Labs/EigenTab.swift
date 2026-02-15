@@ -34,6 +34,22 @@ struct EigenTab: View {
             bottomPanel
         }
         .background(MatrixTheme.background)
+        .onReceive(matrix.objectWillChange) { _ in
+            DispatchQueue.main.async {
+                if !matrix.hasRealEigenvalues {
+                    ChallengeManager.shared.complete("la_complex")
+                }
+                if matrix.hasRealEigenvalues {
+                    let ev = matrix.eigenvalues
+                    if abs(ev.real1 - ev.real2) < 0.05 {
+                        ChallengeManager.shared.complete("la_repeated")
+                    }
+                }
+                if !matrix.isDiagonalizable {
+                    ChallengeManager.shared.complete("la_defective")
+                }
+            }
+        }
     }
 }
 
@@ -166,7 +182,7 @@ private extension EigenTab {
             )
             context.draw(
                 Text(labelText)
-                    .font(MatrixTheme.monoFont(12, weight: .bold))
+                    .font(MatrixTheme.monoFont(14, weight: .bold))
                     .foregroundColor(color),
                 at: labelPt,
                 anchor: .leading
@@ -278,7 +294,7 @@ private extension EigenTab {
     func matrixCell(value: Double, onChange: @escaping (Double) -> Void) -> some View {
         let text = formatNum(value)
         return Text(text)
-            .font(MatrixTheme.monoFont(18, weight: .semibold))
+            .font(MatrixTheme.monoFont(20, weight: .semibold))
             .foregroundColor(MatrixTheme.textPrimary)
             .frame(width: 60, height: 36)
             .background(
@@ -328,7 +344,7 @@ private extension EigenTab {
                 .fill(color)
                 .frame(width: 8, height: 8)
             Text("\(label) = \(formatNum(value))")
-                .font(MatrixTheme.monoFont(13, weight: .medium))
+                .font(MatrixTheme.monoFont(15, weight: .medium))
                 .foregroundColor(MatrixTheme.textPrimary)
         }
     }
@@ -336,10 +352,10 @@ private extension EigenTab {
     func complexEigenRow(real: Double, imag: Double) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Complex eigenvalues")
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textMuted)
             Text("\(formatNum(real)) \u{00B1} \(formatNum(abs(imag)))i")
-                .font(MatrixTheme.monoFont(13, weight: .medium))
+                .font(MatrixTheme.monoFont(15, weight: .medium))
                 .foregroundColor(MatrixTheme.neonMagenta)
         }
     }
@@ -347,10 +363,10 @@ private extension EigenTab {
     func miniStat(label: String, value: String) -> some View {
         HStack(spacing: 4) {
             Text(label)
-                .font(MatrixTheme.captionFont(11))
+                .font(MatrixTheme.captionFont(13))
                 .foregroundColor(MatrixTheme.textMuted)
             Text(value)
-                .font(MatrixTheme.monoFont(13, weight: .semibold))
+                .font(MatrixTheme.monoFont(15, weight: .semibold))
                 .foregroundColor(MatrixTheme.textPrimary)
         }
     }
@@ -394,11 +410,11 @@ private extension EigenTab {
 
         return HStack(spacing: 4) {
             Text("det(A\u{2212}\u{03BB}I) =")
-                .font(MatrixTheme.captionFont(12))
+                .font(MatrixTheme.captionFont(14))
                 .foregroundColor(MatrixTheme.textMuted)
 
             Text("\u{03BB}\u{00B2} \(signTr) \(formatNum(abs(tr)))\u{03BB} \(signDet) \(formatNum(abs(det))) = 0")
-                .font(MatrixTheme.monoFont(13, weight: .semibold))
+                .font(MatrixTheme.monoFont(15, weight: .semibold))
                 .foregroundColor(accent)
         }
         .accessibilityElement(children: .combine)
@@ -416,14 +432,14 @@ private extension EigenTab {
         return VStack(spacing: 4) {
             HStack {
                 Text("\u{03BB} = \(formatNum(lambda))")
-                    .font(MatrixTheme.monoFont(14, weight: .semibold))
+                    .font(MatrixTheme.monoFont(16, weight: .semibold))
                     .foregroundColor(MatrixTheme.textPrimary)
 
                 Spacer()
 
                 if isNearEigenvalue {
                     Text("\u{2713} Eigenvalue!")
-                        .font(MatrixTheme.monoFont(12, weight: .bold))
+                        .font(MatrixTheme.monoFont(14, weight: .bold))
                         .foregroundColor(MatrixTheme.neonGreen)
                         .transition(.opacity)
                 }
@@ -488,7 +504,7 @@ private extension EigenTab {
                 Image(systemName: icon)
                     .font(.caption)
                 Text(name)
-                    .font(MatrixTheme.captionFont(11))
+                    .font(MatrixTheme.captionFont(13))
             }
             .foregroundColor(isActive ? MatrixTheme.background : accent)
             .padding(.horizontal, 12)
