@@ -55,11 +55,18 @@ enum MatrixTheme {
 struct NeonGlow: ViewModifier {
     let color: Color
     let radius: CGFloat
-    
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
-            .shadow(color: color.opacity(0.6), radius: radius)
-            .shadow(color: color.opacity(0.3), radius: radius * 2)
+        if reduceMotion {
+            content
+        } else {
+            content
+                .shadow(color: color.opacity(0.6), radius: radius)
+                .shadow(color: color.opacity(0.3), radius: radius * 2)
+        }
     }
 }
 

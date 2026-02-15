@@ -1,6 +1,7 @@
 import SwiftUI
 import AudioToolbox
 import Combine
+import UIKit
 
 // MARK: - Access Mode
 
@@ -14,6 +15,31 @@ private enum AccessMode: String, CaseIterable, Sendable {
 private struct CellCoord: Hashable, Sendable {
     let row: Int
     let col: Int
+}
+
+// MARK: - Benchmark Types
+
+private struct BenchmarkInput: Sendable {
+    let sizes: [Int]
+    let blockSize: Int
+}
+
+private struct BenchmarkResult: Sendable {
+    let size: Int
+    let naiveNs: UInt64
+    let blockedNs: UInt64
+}
+
+private struct BenchmarkOutput: Sendable {
+    let results: [BenchmarkResult]
+}
+
+private struct BenchmarkDisplayResult: Identifiable {
+    let id = UUID()
+    let size: Int
+    let naiveMs: Double
+    let blockedMs: Double
+    var speedup: Double { naiveMs / blockedMs }
 }
 
 // MARK: - Main View
@@ -46,6 +72,10 @@ struct PerformanceLabView: View {
     // Info popup
     @State private var showInfo: Bool = false
 
+    // Benchmark
+    @State private var benchmarkResults: [BenchmarkDisplayResult] = []
+    @State private var isBenchmarking = false
+
     // Timer for animation stepping
     @State private var animationTimer = Timer.publish(every: 0.2, on: .main, in: .common)
     @State private var timerCancellable: (any Cancellable)?
@@ -69,6 +99,8 @@ struct PerformanceLabView: View {
                     statisticsPanel
                 }
                 .padding(.horizontal)
+                benchmarkSection
+                    .padding(.horizontal)
                 infoButton
             }
             .padding(.vertical)
@@ -145,10 +177,13 @@ struct PerformanceLabView: View {
                 ForEach(AccessMode.allCases, id: \.self) { mode in
                     Text(mode == .naive ? "Naive O(n\u{00B3})" : "Blocked (Tiled)")
                         .tag(mode)
+                        .accessibilityLabel(mode == .naive ? "Naive row-column scan" : "Blocked tiled access")
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityLabel("Memory access pattern")
             .onChange(of: accessMode) { _ in
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 resetAnimation()
                 buildSequences()
             }
@@ -156,6 +191,7 @@ struct PerformanceLabView: View {
             HStack(spacing: 16) {
                 // Play / Pause
                 Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     if isPlaying {
                         stopAnimation()
                     } else {
@@ -171,9 +207,11 @@ struct PerformanceLabView: View {
                                 .fill(MatrixTheme.level3Color.opacity(0.15))
                         )
                 }
+                .accessibilityLabel(isPlaying ? "Pause animation" : "Play animation")
 
                 // Reset
                 Button {
+                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
                     resetAnimation()
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
@@ -185,6 +223,7 @@ struct PerformanceLabView: View {
                                 .fill(MatrixTheme.surfaceSecondary)
                         )
                 }
+                .accessibilityLabel("Reset visualization")
 
                 Spacer()
 
@@ -196,6 +235,7 @@ struct PerformanceLabView: View {
                         .font(.subheadline)
                         .foregroundColor(soundEnabled ? MatrixTheme.level3Color : MatrixTheme.textMuted)
                 }
+                .accessibilityLabel(soundEnabled ? "Disable sound" : "Enable sound")
 
                 // Speed control
                 VStack(spacing: 2) {
@@ -205,6 +245,7 @@ struct PerformanceLabView: View {
                     Slider(value: $animationSpeed, in: 0.05...0.6)
                         .tint(MatrixTheme.level3Color)
                         .frame(width: 100)
+                        .accessibilityLabel("Animation speed")
                         .onChange(of: animationSpeed) { _ in
                             if isPlaying {
                                 stopAnimation()
@@ -403,6 +444,8 @@ struct PerformanceLabView: View {
             .animation(.easeInOut(duration: 0.3), value: currentFPS)
         }
         .labCard(accent: MatrixTheme.level3Color)
+        .accessibilityLabel("Simulated frames per second")
+        .accessibilityValue(String(format: "%.0f FPS", currentFPS))
     }
 
     private var fpsArcFraction: Double {
@@ -479,6 +522,8 @@ struct PerformanceLabView: View {
             }
         }
         .labCard(accent: MatrixTheme.level3Color)
+        .accessibilityLabel("Cache hit rate")
+        .accessibilityValue(String(format: "%.0f percent", hitRate))
     }
 
     private func statRow(icon: String, label: String, value: Int, color: Color) -> some View {
@@ -497,11 +542,16 @@ struct PerformanceLabView: View {
         }
     }
 
+    private var hitRate: Double {
+        let total = cacheHits + cacheMisses
+        guard total > 0 else { return 0 }
+        return Double(cacheHits) / Double(total) * 100
+    }
+
     private var hitRateText: String {
         let total = cacheHits + cacheMisses
         guard total > 0 else { return "—" }
-        let rate = Double(cacheHits) / Double(total) * 100
-        return String(format: "%.0f%%", rate)
+        return String(format: "%.0f%%", hitRate)
     }
 
     private var hitRateColor: Color {
@@ -537,7 +587,176 @@ struct PerformanceLabView: View {
                     )
             )
         }
+        .accessibilityLabel("Learn about cache behavior")
         .padding(.bottom, 8)
+    }
+
+    // MARK: - Benchmark Section
+
+    private var benchmarkSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Real Benchmark")
+                .font(MatrixTheme.captionFont(11))
+                .foregroundColor(MatrixTheme.textSecondary)
+
+            Button {
+                runBenchmark()
+            } label: {
+                HStack(spacing: 8) {
+                    if isBenchmarking {
+                        ProgressView()
+                            .tint(MatrixTheme.level3Color)
+                    } else {
+                        Image(systemName: "gauge.with.dots.needle.67percent")
+                            .foregroundColor(MatrixTheme.level3Color)
+                    }
+                    Text(isBenchmarking ? "Running..." : "Run Benchmark")
+                        .font(MatrixTheme.bodyFont(14))
+                        .foregroundColor(MatrixTheme.level3Color)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(MatrixTheme.level3Color.opacity(0.15))
+                )
+            }
+            .disabled(isBenchmarking)
+            .accessibilityLabel("Run real matrix multiplication benchmark")
+
+            if !benchmarkResults.isEmpty {
+                VStack(spacing: 0) {
+                    // Header row
+                    HStack {
+                        Text("Size")
+                            .frame(width: 50, alignment: .leading)
+                        Text("Naive")
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                        Text("Blocked")
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                        Text("Speedup")
+                            .frame(width: 60, alignment: .trailing)
+                    }
+                    .font(MatrixTheme.captionFont(10))
+                    .foregroundColor(MatrixTheme.textMuted)
+                    .padding(.bottom, 6)
+
+                    ForEach(benchmarkResults) { result in
+                        HStack {
+                            Text("\(result.size)×\(result.size)")
+                                .frame(width: 50, alignment: .leading)
+                            Text(formatMs(result.naiveMs))
+                                .foregroundColor(MatrixTheme.neonOrange)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                            Text(formatMs(result.blockedMs))
+                                .foregroundColor(MatrixTheme.neonGreen)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                            Text(String(format: "%.1fx", result.speedup))
+                                .foregroundColor(result.speedup > 1 ? MatrixTheme.neonGreen : MatrixTheme.textSecondary)
+                                .frame(width: 60, alignment: .trailing)
+                        }
+                        .font(MatrixTheme.monoFont(13, weight: .medium))
+                        .padding(.vertical, 4)
+
+                        if result.id != benchmarkResults.last?.id {
+                            Divider()
+                                .background(MatrixTheme.gridLine)
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .labCard(accent: MatrixTheme.level3Color)
+    }
+
+    private func formatMs(_ ms: Double) -> String {
+        if ms < 1 {
+            return String(format: "%.2fms", ms)
+        } else if ms < 100 {
+            return String(format: "%.1fms", ms)
+        } else {
+            return String(format: "%.0fms", ms)
+        }
+    }
+
+    private func runBenchmark() {
+        isBenchmarking = true
+        Task {
+            let input = BenchmarkInput(sizes: [64, 128, 256, 512], blockSize: 32)
+            let output: BenchmarkOutput = await Task.detached(priority: .userInitiated) {
+                return Self.runBenchmarks(input: input)
+            }.value
+            benchmarkResults = output.results.map { r in
+                BenchmarkDisplayResult(
+                    size: r.size,
+                    naiveMs: Double(r.naiveNs) / 1_000_000,
+                    blockedMs: Double(r.blockedNs) / 1_000_000
+                )
+            }
+            isBenchmarking = false
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        }
+    }
+
+    private nonisolated static func runBenchmarks(input: BenchmarkInput) -> BenchmarkOutput {
+        var results: [BenchmarkResult] = []
+
+        for n in input.sizes {
+            // Create matrices with deterministic fill
+            var a = [Double](repeating: 0, count: n * n)
+            var b = [Double](repeating: 0, count: n * n)
+            for i in 0..<(n * n) {
+                a[i] = Double(i % 17) / 17.0
+                b[i] = Double(i % 13) / 13.0
+            }
+
+            // Naive: triple loop, row-major
+            let naiveStart = DispatchTime.now()
+            var c1 = [Double](repeating: 0, count: n * n)
+            for i in 0..<n {
+                for j in 0..<n {
+                    var sum = 0.0
+                    for k in 0..<n {
+                        sum += a[i * n + k] * b[k * n + j]
+                    }
+                    c1[i * n + j] = sum
+                }
+            }
+            _ = c1  // prevent optimization
+            let naiveEnd = DispatchTime.now()
+            let naiveNs = naiveEnd.uptimeNanoseconds - naiveStart.uptimeNanoseconds
+
+            // Blocked: tiled loop
+            let bs = input.blockSize
+            let blockedStart = DispatchTime.now()
+            var c2 = [Double](repeating: 0, count: n * n)
+            for ii in stride(from: 0, to: n, by: bs) {
+                for jj in stride(from: 0, to: n, by: bs) {
+                    for kk in stride(from: 0, to: n, by: bs) {
+                        let iEnd = min(ii + bs, n)
+                        let jEnd = min(jj + bs, n)
+                        let kEnd = min(kk + bs, n)
+                        for i in ii..<iEnd {
+                            for j in jj..<jEnd {
+                                var sum = c2[i * n + j]
+                                for k in kk..<kEnd {
+                                    sum += a[i * n + k] * b[k * n + j]
+                                }
+                                c2[i * n + j] = sum
+                            }
+                        }
+                    }
+                }
+            }
+            _ = c2  // prevent optimization
+            let blockedEnd = DispatchTime.now()
+            let blockedNs = blockedEnd.uptimeNanoseconds - blockedStart.uptimeNanoseconds
+
+            results.append(BenchmarkResult(size: n, naiveNs: naiveNs, blockedNs: blockedNs))
+        }
+
+        return BenchmarkOutput(results: results)
     }
 
     // MARK: - Sequence Generation
@@ -707,10 +926,11 @@ struct PerformanceLabView: View {
         // Update FPS gauge
         updateFPSGauge(cacheHit: isCacheHitB)
 
-        // Sound
+        // Sound & haptic
         soundCounter += 1
         if soundEnabled && soundCounter % 4 == 0 {
             playSoundEffect(cacheHit: isCacheHitB)
+            UISelectionFeedbackGenerator().selectionChanged()
         }
 
         stepIndex += 1

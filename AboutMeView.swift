@@ -28,6 +28,7 @@ struct AboutMeView: View {
                             .foregroundColor(MatrixTheme.textMuted)
                             .font(.title3)
                     }
+                    .accessibilityLabel("Dismiss")
                 }
             }
         }
@@ -64,18 +65,18 @@ struct AboutMeView: View {
             .neonGlow(MatrixTheme.neonCyan, radius: 8)
             
             VStack(spacing: 6) {
-                Text("Your Name")
+                Text("[YOUR NAME]")
                     .font(MatrixTheme.titleFont(24))
                     .foregroundColor(MatrixTheme.textPrimary)
                 
-                Text("PhD Candidate, Civil Engineering")
+                Text("[YOUR TITLE / SCHOOL]")
                     .font(MatrixTheme.monoFont(14, weight: .medium))
                     .foregroundColor(MatrixTheme.neonCyan)
                 
                 HStack(spacing: 6) {
                     Image(systemName: "building.columns.fill")
                         .font(.system(size: 12))
-                    Text("The Ohio State University")
+                    Text("[YOUR INSTITUTION]")
                         .font(MatrixTheme.captionFont(13))
                 }
                 .foregroundColor(MatrixTheme.textSecondary)
@@ -100,17 +101,17 @@ struct AboutMeView: View {
             }
             
             VStack(alignment: .leading, spacing: 12) {
-                Text("Matrices are the silent engine behind everything I study. In photogrammetry, every image captured from a drone or satellite is transformed through matrices before it becomes a map. Point clouds from LiDAR sensors are rotated, scaled, and aligned using matrix operations.")
+                Text("[Describe what first sparked your interest in mathematics, coding, or technology. What moment made you realize you wanted to build things?]")
                     .font(MatrixTheme.bodyFont(15))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .lineSpacing(4)
                 
-                Text("Yet most students learn matrices as abstract algebra—rows, columns, determinants—without ever seeing what they do. MatrixLab is my attempt to make the invisible visible: to let you drag a basis vector and watch space warp, to write a convolution kernel and see edges appear, to feel the difference between row-major and column-major memory access.")
+                Text("[Explain why you built MatrixLab specifically. What problem did you want to solve? What insight did you want to share with others?]")
                     .font(MatrixTheme.bodyFont(15))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .lineSpacing(4)
                 
-                Text("My research lies at the intersection of geomatics, surveying, and computational geometry—fields where matrices aren't just math, they're the language of measurement itself.")
+                Text("[Share your vision. Where do you see yourself going? How does this project connect to your broader goals?]")
                     .font(MatrixTheme.bodyFont(15))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .lineSpacing(4)
@@ -135,25 +136,25 @@ struct AboutMeView: View {
             
             VStack(spacing: 12) {
                 ResearchConnectionCard(
-                    matrixTopic: "Affine Transforms",
-                    application: "Image rectification",
-                    detail: "Correcting perspective distortion in aerial and satellite imagery using 2D projective matrices.",
+                    matrixTopic: "Geometric Transforms",
+                    application: "[Your application of transforms]",
+                    detail: "[Describe how you use geometric transforms in your work or studies.]",
                     icon: "rectangle.on.rectangle.angled",
                     color: MatrixTheme.neonCyan
                 )
                 
                 ResearchConnectionCard(
-                    matrixTopic: "Convolution",
-                    application: "Feature extraction from aerial imagery",
-                    detail: "Applying kernel filters to detect edges, corners, and textures in photogrammetric datasets.",
+                    matrixTopic: "Image Processing",
+                    application: "[Your application of convolution]",
+                    detail: "[Describe how you use convolution or image processing in your work or studies.]",
                     icon: "camera.filters",
                     color: MatrixTheme.neonMagenta
                 )
                 
                 ResearchConnectionCard(
-                    matrixTopic: "Tiled Processing",
-                    application: "Large-scale point cloud computation",
-                    detail: "Partitioning massive geospatial datasets into memory-efficient blocks for real-time processing.",
+                    matrixTopic: "Performance",
+                    application: "[Your application of optimization]",
+                    detail: "[Describe how you use optimization or performance techniques in your work or studies.]",
                     icon: "square.grid.3x3.fill",
                     color: MatrixTheme.neonGreen
                 )

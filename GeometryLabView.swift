@@ -6,6 +6,8 @@ struct GeometryLabView: View {
     @StateObject private var matrix = Matrix2x2()
     @State private var showInfo = false
     @State private var activePreset: String?
+    @State private var lastSnappedI: CGPoint = .zero
+    @State private var lastSnappedJ: CGPoint = .zero
 
     // Grid configuration
     private let gridUnit: CGFloat = 80
@@ -28,7 +30,8 @@ struct GeometryLabView: View {
                         basis: matrix.basisI,
                         center: center,
                         color: MatrixTheme.neonCyan,
-                        label: "i\u{0302}"
+                        label: "i\u{0302}",
+                        lastSnapped: $lastSnappedI
                     ) { newBasis in
                         matrix.basisI = newBasis
                     }
@@ -37,7 +40,8 @@ struct GeometryLabView: View {
                         basis: matrix.basisJ,
                         center: center,
                         color: MatrixTheme.neonMagenta,
-                        label: "j\u{0302}"
+                        label: "j\u{0302}",
+                        lastSnapped: $lastSnappedJ
                     ) { newBasis in
                         matrix.basisJ = newBasis
                     }
@@ -72,6 +76,7 @@ struct GeometryLabView: View {
                     Image(systemName: "info.circle")
                         .foregroundColor(MatrixTheme.neonCyan)
                 }
+                .accessibilityLabel("Learn about affine transformations")
             }
         }
         .sheet(isPresented: $showInfo) {
@@ -249,6 +254,7 @@ private extension GeometryLabView {
         center: CGPoint,
         color: Color,
         label: String,
+        lastSnapped: Binding<CGPoint>,
         onDrag: @escaping (CGPoint) -> Void
     ) -> some View {
         let tipScreen = CGPoint(
@@ -297,6 +303,9 @@ private extension GeometryLabView {
                 )
                 .neonGlow(color, radius: 6)
                 .position(tipScreen)
+                .accessibilityLabel("Basis vector \(label)")
+                .accessibilityValue("(\(String(format: "%.1f", basis.x)), \(String(format: "%.1f", basis.y)))")
+                .accessibilityHint("Drag to change this basis vector")
                 .gesture(
                     DragGesture(minimumDistance: 0, coordinateSpace: .local)
                         .onChanged { value in
@@ -306,6 +315,10 @@ private extension GeometryLabView {
                                 x: (gridPt.x * 10).rounded() / 10,
                                 y: (gridPt.y * 10).rounded() / 10
                             )
+                            if snapped != lastSnapped.wrappedValue {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                lastSnapped.wrappedValue = snapped
+                            }
                             onDrag(snapped)
                         }
                 )
@@ -383,6 +396,9 @@ private extension GeometryLabView {
                         .foregroundColor(determinantColor)
                 }
                 .padding(.leading, 4)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Determinant")
+                .accessibilityValue(String(format: "%.2f", matrix.determinant))
             }
             .labCard(accent: MatrixTheme.level1Color)
 
@@ -397,6 +413,7 @@ private extension GeometryLabView {
 
             // Reset button
             Button {
+                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                     matrix.reset()
                     activePreset = nil
@@ -418,6 +435,7 @@ private extension GeometryLabView {
                         )
                 )
             }
+            .accessibilityLabel("Reset matrix to identity")
         }
     }
 
@@ -459,6 +477,7 @@ private extension GeometryLabView {
 
     func presetButton(name: String, icon: String, action: @escaping () -> Void) -> some View {
         Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                 action()
                 activePreset = name
@@ -484,6 +503,7 @@ private extension GeometryLabView {
             )
             .neonGlow(isActive ? MatrixTheme.neonCyan : .clear, radius: 4)
         }
+        .accessibilityLabel("\(name) transformation")
     }
 
     // MARK: Helpers

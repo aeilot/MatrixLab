@@ -14,17 +14,21 @@ private struct RainColumn: Identifiable, Sendable {
 
 private struct MatrixRainView: View {
     @State private var phase: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     private let columns: [RainColumn]
     
+    private let glyphs = ["0", "1", "∑", "λ", "∂", "π", "Δ", "∇", "θ", "φ",
+                           "α", "β", "σ", "μ", "ω", "∞", "≈", "≠", "√", "∫"]
+    
     init(columnCount: Int = 20) {
-        let glyphs = ["0", "1", "∑", "λ", "∂", "π", "Δ", "∇", "θ", "φ",
-                       "α", "β", "σ", "μ", "ω", "∞", "≈", "≠", "√", "∫"]
+        let glyphList = ["0", "1", "∑", "λ", "∂", "π", "Δ", "∇", "θ", "φ",
+                         "α", "β", "σ", "μ", "ω", "∞", "≈", "≠", "√", "∫"]
         
         var cols: [RainColumn] = []
         for i in 0..<columnCount {
             let charCount = Int.random(in: 6...14)
-            let chars = (0..<charCount).map { _ in glyphs.randomElement()! }
+            let chars = (0..<charCount).map { _ in glyphList.randomElement()! }
             cols.append(RainColumn(
                 x: CGFloat(i) / CGFloat(columnCount),
                 speed: Double.random(in: 3...8),
@@ -38,6 +42,48 @@ private struct MatrixRainView: View {
     }
     
     var body: some View {
+        if reduceMotion {
+            staticRainView
+        } else {
+            animatedRainView
+        }
+    }
+    
+    // MARK: - Static Rain (Reduce Motion)
+    
+    private var staticRainView: some View {
+        Canvas { context, size in
+            let cellSize: CGFloat = 20
+            let cols = Int(size.width / cellSize)
+            let rows = Int(size.height / cellSize)
+            
+            // Use a deterministic seed based on grid position
+            for col in 0..<cols {
+                for row in 0..<rows {
+                    // Deterministic pseudo-random selection based on position
+                    let index = (col * 7 + row * 13) % glyphs.count
+                    let char = glyphs[index]
+                    
+                    // Vary opacity based on position for visual interest
+                    let opacityVal = 0.08 + 0.12 * Double((col + row * 3) % 5) / 4.0
+                    
+                    let text = Text(char)
+                        .font(.system(size: 14, weight: .regular, design: .monospaced))
+                        .foregroundColor(MatrixTheme.neonCyan.opacity(opacityVal))
+                    
+                    let resolved = context.resolve(text)
+                    let x = CGFloat(col) * cellSize + cellSize / 2
+                    let y = CGFloat(row) * cellSize + cellSize / 2
+                    context.draw(resolved, at: CGPoint(x: x, y: y))
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+    
+    // MARK: - Animated Rain
+    
+    private var animatedRainView: some View {
         Canvas { context, size in
             // Draw is handled via TimelineView below
         }
@@ -105,6 +151,7 @@ struct OnboardingView: View {
     @State private var buttonOpacity: Double = 0
     @State private var playButtonScale: CGFloat = 0.6
     @State private var playButtonPulse = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     var body: some View {
         ZStack {
@@ -118,9 +165,34 @@ struct OnboardingView: View {
             .tabViewStyle(.page(indexDisplayMode: .always))
             .indexViewStyle(.page(backgroundDisplayMode: .always))
         }
+        .overlay(alignment: .topTrailing) {
+            if currentPage < 2 {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        isPresented = false
+                    }
+                } label: {
+                    Text("Skip")
+                        .font(MatrixTheme.captionFont(12))
+                        .foregroundColor(MatrixTheme.textMuted)
+                }
+                .padding(.trailing, 20)
+                .padding(.top, 12)
+            }
+        }
         .onAppear {
             appeared = true
-            animateWelcomePage()
+            if reduceMotion {
+                // Show everything immediately
+                titleScale = 1.0
+                titleOpacity = 1.0
+                subtitleOpacity = 1.0
+                taglineOpacity = 1.0
+                buttonOpacity = 1.0
+                playButtonScale = 1.0
+            } else {
+                animateWelcomePage()
+            }
         }
     }
     
@@ -178,7 +250,7 @@ struct OnboardingView: View {
                         .padding(.horizontal, 32)
                     
                     Button {
-                        withAnimation(.easeInOut(duration: 0.4)) {
+                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.4)) {
                             currentPage = 1
                         }
                     } label: {
@@ -284,12 +356,13 @@ struct OnboardingView: View {
                             .stroke(MatrixTheme.neonCyan.opacity(0.15), lineWidth: 1.5)
                             .frame(width: 120 + CGFloat(ring) * 40,
                                    height: 120 + CGFloat(ring) * 40)
-                            .scaleEffect(playButtonPulse ? 1.15 : 1.0)
-                            .opacity(playButtonPulse ? 0.0 : 0.6)
+                            .scaleEffect(reduceMotion ? 1.0 : (playButtonPulse ? 1.15 : 1.0))
+                            .opacity(reduceMotion ? 0.4 : (playButtonPulse ? 0.0 : 0.6))
                             .animation(
-                                .easeInOut(duration: 2.0)
-                                .repeatForever(autoreverses: false)
-                                .delay(Double(ring) * 0.4),
+                                reduceMotion ? nil :
+                                    .easeInOut(duration: 2.0)
+                                    .repeatForever(autoreverses: false)
+                                    .delay(Double(ring) * 0.4),
                                 value: playButtonPulse
                             )
                     }
@@ -311,11 +384,15 @@ struct OnboardingView: View {
                 .scaleEffect(playButtonScale)
                 .neonGlow(MatrixTheme.neonCyan, radius: 10)
                 .onAppear {
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                    if reduceMotion {
                         playButtonScale = 1.0
-                    }
-                    withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: false)) {
-                        playButtonPulse = true
+                    } else {
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                            playButtonScale = 1.0
+                        }
+                        withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: false)) {
+                            playButtonPulse = true
+                        }
                     }
                 }
                 
@@ -373,6 +450,7 @@ struct OnboardingView: View {
 private struct NarrativeCard: View {
     let level: LabLevel
     @State private var appeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     var body: some View {
         HStack(spacing: 16) {
@@ -414,10 +492,14 @@ private struct NarrativeCard: View {
         }
         .labCard(accent: level.accentColor)
         .opacity(appeared ? 1 : 0)
-        .offset(y: appeared ? 0 : 20)
+        .offset(y: appeared ? 0 : (reduceMotion ? 0 : 20))
         .onAppear {
-            withAnimation(.easeOut(duration: 0.5).delay(Double(level.rawValue - 1) * 0.15)) {
+            if reduceMotion {
                 appeared = true
+            } else {
+                withAnimation(.easeOut(duration: 0.5).delay(Double(level.rawValue - 1) * 0.15)) {
+                    appeared = true
+                }
             }
         }
     }

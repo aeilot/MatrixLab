@@ -51,6 +51,9 @@ private enum ImageSource: Int, CaseIterable, Identifiable {
 // MARK: - Image Filter Workshop (Level 2)
 
 struct ImageLabView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @State private var kernel = ConvolutionKernel(
         name: "Identity",
         values: [[0, 0, 0], [0, 1, 0], [0, 0, 0]]
@@ -60,6 +63,7 @@ struct ImageLabView: View {
     @State private var showOriginal = false
     @State private var showInfo = false
     @State private var selectedPresetIndex = 0
+    @State private var shimmerActive = false
 
     // RGB channel weights
     @State private var redWeight: Double = 1.0
@@ -79,6 +83,9 @@ struct ImageLabView: View {
     // Thumbnail caches (generated once)
     @State private var presetThumbnails: [ImageSource: UIImage] = [:]
 
+    // Persistence
+    @AppStorage("lastPresetIndex") private var savedPresetIndex = 0
+
     private let accent = MatrixTheme.level2Color
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
@@ -91,22 +98,23 @@ struct ImageLabView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: MatrixTheme.spacing) {
-                headerSection
-                imageSourceSection
-                imageComparisonSection
-                presetButtonsSection
-                kernelEditorSection
-                channelSlidersSection
-                infoButton
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 40)
-        }
+        mainContent
         .background(MatrixTheme.background)
         .navigationTitle("Image Filter Workshop")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil
+                    )
+                }
+                .font(MatrixTheme.monoFont(14, weight: .semibold))
+                .foregroundColor(accent)
+            }
+        }
         .overlay {
             if showInfo {
                 Color.black.opacity(0.6)
@@ -120,6 +128,10 @@ struct ImageLabView: View {
         .animation(.easeInOut(duration: 0.3), value: showInfo)
         .task {
             generateThumbnails()
+            if savedPresetIndex > 0 && savedPresetIndex < ConvolutionKernel.presets.count {
+                applyPreset(ConvolutionKernel.presets[savedPresetIndex])
+                selectedPresetIndex = savedPresetIndex
+            }
             await applyFilter()
         }
         .onChange(of: kernelFingerprint) { _ in
@@ -142,6 +154,58 @@ struct ImageLabView: View {
     // A hashable fingerprint of current kernel values for change detection.
     private var kernelFingerprint: [Double] {
         kernel.values.flatMap { $0 }
+    }
+
+    // MARK: - Layout
+
+    @ViewBuilder
+    private var mainContent: some View {
+        if horizontalSizeClass == .regular {
+            regularLayout
+        } else {
+            compactLayout
+        }
+    }
+
+    private var regularLayout: some View {
+        ScrollView {
+            VStack(spacing: MatrixTheme.spacing) {
+                headerSection
+                HStack(alignment: .top, spacing: MatrixTheme.spacing) {
+                    VStack(spacing: MatrixTheme.spacing) {
+                        imageSourceSection
+                        imageComparisonSection
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    VStack(spacing: MatrixTheme.spacing) {
+                        presetButtonsSection
+                        kernelEditorSection
+                        channelSlidersSection
+                        infoButton
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 40)
+        }
+    }
+
+    private var compactLayout: some View {
+        ScrollView {
+            VStack(spacing: MatrixTheme.spacing) {
+                headerSection
+                imageSourceSection
+                imageComparisonSection
+                presetButtonsSection
+                kernelEditorSection
+                channelSlidersSection
+                infoButton
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 40)
+        }
     }
 
     // MARK: - Header
@@ -233,6 +297,7 @@ struct ImageLabView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(source.label) source image")
     }
 
     private var photoPickerButton: some View {
@@ -275,6 +340,7 @@ struct ImageLabView: View {
                 )
             }
             .neonGlow(isActive ? accent : .clear, radius: isActive ? 4 : 0)
+            .accessibilityLabel("Upload your own photo")
 
             Text(currentUserPhoto != nil ? "Photo" : "Upload")
                 .font(MatrixTheme.captionFont(10))
@@ -319,8 +385,18 @@ struct ImageLabView: View {
                         .padding(8)
                         .transition(.opacity)
                 } else {
-                    ProgressView()
-                        .tint(accent)
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(accent.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(accent.opacity(shimmerActive && !reduceMotion ? 0.2 : 0.05))
+                                .animation(
+                                    reduceMotion ? nil : .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
+                                    value: shimmerActive
+                                )
+                        )
+                        .padding(8)
+                        .onAppear { shimmerActive = true }
                 }
 
                 // Processing indicator
@@ -354,7 +430,7 @@ struct ImageLabView: View {
                 RoundedRectangle(cornerRadius: MatrixTheme.cornerRadius)
                     .stroke(accent.opacity(showOriginal ? 0.15 : 0.4), lineWidth: 1)
             )
-            .animation(.easeInOut(duration: 0.25), value: showOriginal)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: showOriginal)
 
             // Kernel name label
             Text(kernel.name)
@@ -372,7 +448,10 @@ struct ImageLabView: View {
         isSelected: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
             Text(title)
                 .font(MatrixTheme.captionFont(12))
                 .foregroundColor(isSelected ? MatrixTheme.textPrimary : MatrixTheme.textMuted)
@@ -384,6 +463,8 @@ struct ImageLabView: View {
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     // MARK: - Preset Buttons
@@ -414,8 +495,10 @@ struct ImageLabView: View {
     private func presetButton(_ preset: ConvolutionKernel, index: Int) -> some View {
         let isActive = selectedPresetIndex == index
         return Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             withAnimation(.easeInOut(duration: 0.3)) {
                 selectedPresetIndex = index
+                savedPresetIndex = index
                 applyPreset(preset)
             }
         } label: {
@@ -436,6 +519,7 @@ struct ImageLabView: View {
         }
         .buttonStyle(.plain)
         .neonGlow(isActive ? accent : .clear, radius: isActive ? 4 : 0)
+        .accessibilityLabel("\(preset.name) convolution kernel")
     }
 
     // MARK: - Kernel Editor Grid
@@ -524,6 +608,8 @@ struct ImageLabView: View {
                 )
         )
         .onTapGesture { editingCell = (row, col) }
+        .accessibilityLabel("Kernel row \(row + 1) column \(col + 1)")
+        .accessibilityValue(formatKernelValue(value))
     }
 
     // MARK: - RGB Channel Sliders
@@ -538,6 +624,7 @@ struct ImageLabView: View {
                     .foregroundColor(MatrixTheme.textPrimary)
                 Spacer()
                 Button {
+                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
                     withAnimation(.easeInOut(duration: 0.2)) {
                         redWeight = 1.0
                         greenWeight = 1.0
@@ -574,6 +661,8 @@ struct ImageLabView: View {
 
             Slider(value: value, in: 0...2, step: 0.05)
                 .tint(color)
+                .accessibilityLabel("\(label) channel weight")
+                .accessibilityValue(String(format: "%.2f", value.wrappedValue))
 
             Text(String(format: "%.2f", value.wrappedValue))
                 .font(MatrixTheme.monoFont(12))
@@ -602,6 +691,7 @@ struct ImageLabView: View {
             .labCard(accent: accent)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Learn about convolution and CNNs")
     }
 
     // MARK: - Info Panel
@@ -702,6 +792,7 @@ struct ImageLabView: View {
     /// Switch to a preset image source and re-apply the filter.
     private func switchSource(to source: ImageSource) {
         guard source != .userPhoto else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         withAnimation(.easeInOut(duration: 0.2)) {
             selectedSource = source
         }
