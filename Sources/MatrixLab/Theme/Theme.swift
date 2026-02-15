@@ -193,7 +193,6 @@ struct TooltipModifier: ViewModifier {
                     .padding(12)
                     .frame(maxWidth: 260)
                     .background(MatrixTheme.surfacePrimary)
-
             }
     }
 }

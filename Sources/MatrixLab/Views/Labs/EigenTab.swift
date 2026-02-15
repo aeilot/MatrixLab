@@ -302,15 +302,20 @@ private extension EigenTab {
 
             if matrix.hasRealEigenvalues {
                 eigenValueRow(label: "\u{03BB}\u{2081}", value: ev.real1, color: MatrixTheme.neonGreen)
+                    .tooltip("First eigenvalue: the factor by which its eigenvector is scaled.")
                 eigenValueRow(label: "\u{03BB}\u{2082}", value: ev.real2, color: MatrixTheme.neonOrange)
+                    .tooltip("Second eigenvalue: the factor by which its eigenvector is scaled.")
             } else {
                 complexEigenRow(real: ev.real1, imag: ev.imag1)
+                    .tooltip("Complex eigenvalues indicate a rotation component in the transformation.")
             }
 
             // Determinant & Trace
             HStack(spacing: 12) {
                 miniStat(label: "tr", value: formatNum(matrix.trace))
+                    .tooltip("Trace: sum of diagonal entries. Equals the sum of eigenvalues.")
                 miniStat(label: "det", value: formatNum(matrix.determinant))
+                    .tooltip("Determinant: product of eigenvalues. Measures area scaling.")
             }
         }
         .labCard(accent: accent)
