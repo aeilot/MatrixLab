@@ -417,8 +417,8 @@ private extension GeometryLabView {
         let len = sqrt(dx * dx + dy * dy)
         guard len > 0 else { return CGVector(dx: 15, dy: -15) }
         return CGVector(
-            dx: (dx / len) * 22,
-            dy: (dy / len) * 22
+            dx: (dx / len) * 35,
+            dy: (dy / len) * 35
         )
     }
 }
@@ -591,10 +591,10 @@ private extension GeometryLabView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    // Header
-                    InfoPopupView(
+                    infoSection(
+                        icon: "info.circle",
                         title: "Affine Transformation",
-                        content: """
+                        text: """
                         Every 2\u{00D7}2 matrix defines a linear map from \u{211D}\u{00B2} to \u{211D}\u{00B2}. \
                         The two columns of the matrix are exactly where the basis vectors \
                         \u{00EE}-hat and \u{0135}-hat land after the transformation.
@@ -602,10 +602,10 @@ private extension GeometryLabView {
                         Drag the cyan arrow (\u{00EE}) and magenta arrow (\u{0135}) to reshape space. \
                         The grid warps in real-time so you can see how every point moves.
                         """,
-                        accentColor: MatrixTheme.neonCyan,
-                        isPresented: $showInfo
+                        color: MatrixTheme.neonPurple
                     )
 
+                    
                     // Basis vectors explanation
                     infoSection(
                         icon: "arrow.up.right",
