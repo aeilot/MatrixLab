@@ -194,6 +194,7 @@ struct TooltipModifier: ViewModifier {
                     .frame(maxWidth: 260)
                     .background(MatrixTheme.surfacePrimary)
             }
+            .accessibilityHint("Long press for explanation")
     }
 }
 

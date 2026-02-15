@@ -622,7 +622,15 @@ struct ImageLabView: View {
         .onTapGesture { editingCell = (row, col) }
         .accessibilityLabel("Kernel row \(row + 1) column \(col + 1)")
         .accessibilityValue(formatKernelValue(value))
-        .tooltip("Weight applied to pixel at offset (\(row - 1), \(col - 1)) during convolution.")
+        .overlay(alignment: .topTrailing) {
+            if value != 0 {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 8))
+                    .foregroundColor(accent.opacity(0.5))
+                    .padding(2)
+                    .tooltip("Weight applied to pixel at offset (\(row - 1), \(col - 1)) during convolution.")
+            }
+        }
     }
 
     // MARK: - RGB Channel Sliders

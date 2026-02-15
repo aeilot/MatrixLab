@@ -272,6 +272,8 @@ struct PerformanceLabView: View {
                                 .fill(MatrixTheme.level4Color.opacity(0.15))
                         )
                     }
+                    .disabled(sequenceA.isEmpty || stepIndex >= sequenceA.count)
+                    .opacity(sequenceA.isEmpty || stepIndex >= sequenceA.count ? 0.4 : 1.0)
                     .accessibilityLabel("Advance one step")
                 } else {
                     // Play / Pause
@@ -772,7 +774,7 @@ struct PerformanceLabView: View {
 
     /// Determines if a code line should be highlighted based on stepIndex
     private func isCodeLineActive(lineIndex: Int, totalLines: Int) -> Bool {
-        guard isPlaying || stepIndex > 0 else { return false }
+        guard isPlaying || stepMode || stepIndex > 0 else { return false }
         // Map stepIndex to a line in the code block, cycling through
         let activeLine = stepIndex % totalLines
         return lineIndex == activeLine
