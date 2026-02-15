@@ -104,6 +104,7 @@ private extension GeometryLabView {
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
+        .accessibilityLabel("Transformation grid. Absolute determinant is \(String(format: "%.2f", abs(matrix.determinant)))")
         // Force canvas redraw when matrix changes
         .id("\(matrix.m00)-\(matrix.m01)-\(matrix.m10)-\(matrix.m11)")
     }
@@ -223,6 +224,30 @@ private extension GeometryLabView {
             ? MatrixTheme.neonCyan.opacity(0.3)
             : MatrixTheme.neonMagenta.opacity(0.3)
         context.stroke(parallelogram, with: .color(strokeColor), lineWidth: 1)
+
+        // Area annotation: draw |det| at the centroid of the parallelogram
+        let detValue = abs(det)
+        let detText = String(format: "|det| = %.2f", detValue)
+        let detColor: Color
+        if detValue >= 0.9 && detValue <= 1.1 {
+            detColor = MatrixTheme.neonGreen   // area-preserving
+        } else if detValue < 0.1 {
+            detColor = MatrixTheme.neonOrange   // near-singular
+        } else {
+            detColor = .white
+        }
+
+        let centroid = CGPoint(
+            x: (o.x + iEnd.x + ijEnd.x + jEnd.x) / 4,
+            y: (o.y + iEnd.y + ijEnd.y + jEnd.y) / 4
+        )
+
+        context.draw(
+            Text(detText)
+                .font(MatrixTheme.monoFont(14, weight: .bold))
+                .foregroundColor(detColor),
+            at: centroid
+        )
     }
 
     // MARK: Coordinate Transforms
