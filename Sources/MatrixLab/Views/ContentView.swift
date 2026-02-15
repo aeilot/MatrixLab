@@ -27,6 +27,8 @@ struct ContentView: View {
                             switch level {
                             case .geometry:
                                 GeometryLabView()
+                            case .linearAlgebra:
+                                EmptyView() // placeholder until Task 3
                             case .image:
                                 ImageLabView()
                             case .performance:
