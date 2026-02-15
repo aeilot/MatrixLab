@@ -10,6 +10,13 @@ private enum AccessMode: String, CaseIterable, Sendable {
     case blocked = "Blocked"
 }
 
+// MARK: - Memory Layout Mode
+
+private enum MemoryLayoutMode: String, CaseIterable, Sendable {
+    case rowMajor = "Row-Major"
+    case columnMajor = "Column-Major"
+}
+
 // MARK: - Cell Coordinate
 
 private struct CellCoord: Hashable, Sendable {
@@ -32,6 +39,33 @@ private struct BenchmarkResult: Sendable {
 
 private struct BenchmarkOutput: Sendable {
     let results: [BenchmarkResult]
+}
+
+// MARK: - Code Token Types
+
+private enum TokenKind {
+    case keyword
+    case type
+    case number
+    case comment
+    case op
+    case plain
+}
+
+private struct CodeToken {
+    let text: String
+    let kind: TokenKind
+
+    static func kw(_ text: String) -> CodeToken { CodeToken(text: text, kind: .keyword) }
+    static func tp(_ text: String) -> CodeToken { CodeToken(text: text, kind: .type) }
+    static func num(_ text: String) -> CodeToken { CodeToken(text: text, kind: .number) }
+    static func cm(_ text: String) -> CodeToken { CodeToken(text: text, kind: .comment) }
+    static func op(_ text: String) -> CodeToken { CodeToken(text: text, kind: .op) }
+    static func pl(_ text: String) -> CodeToken { CodeToken(text: text, kind: .plain) }
+}
+
+private struct CodeLine {
+    let tokens: [CodeToken]
 }
 
 private struct BenchmarkDisplayResult: Identifiable {
@@ -69,6 +103,10 @@ struct PerformanceLabView: View {
     @State private var soundEnabled: Bool = true
     @State private var soundCounter: Int = 0
 
+    // Memory strip state
+    @State private var showCacheLineHighlight: Bool = true
+    @State private var memoryLayoutMode: MemoryLayoutMode = .rowMajor
+
     // Info popup
     @State private var showInfo: Bool = false
 
@@ -94,6 +132,12 @@ struct PerformanceLabView: View {
                 headerSection
                 controlPanel
                 gridsSection
+                memoryStripSection
+                    .padding(.horizontal)
+                cacheLineDetailCard
+                    .padding(.horizontal)
+                codeDisplaySection
+                    .padding(.horizontal)
                 HStack(alignment: .top, spacing: MatrixTheme.spacing) {
                     fpsGauge
                     statisticsPanel
@@ -396,6 +440,363 @@ struct PerformanceLabView: View {
 
     private var accentForMode: Color {
         accessMode == .naive ? MatrixTheme.neonOrange : MatrixTheme.neonGreen
+    }
+
+    // MARK: - Memory Strip Section
+
+    /// Row colors for visual banding in the memory strip
+    private static let rowBandColors: [Color] = [
+        .blue, .cyan, .green, .yellow, .orange,
+        .pink, .purple, .mint, .teal, .indigo
+    ]
+
+    private var memoryStripSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Memory Layout (Linear)")
+                    .font(MatrixTheme.captionFont(11))
+                    .foregroundColor(MatrixTheme.textSecondary)
+                Spacer()
+                // Cache line highlight toggle
+                Button {
+                    showCacheLineHighlight.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: showCacheLineHighlight ? "square.grid.3x3.fill" : "square.grid.3x3")
+                            .font(.caption2)
+                        Text("Cache Lines")
+                            .font(MatrixTheme.captionFont(10))
+                    }
+                    .foregroundColor(showCacheLineHighlight ? MatrixTheme.level4Color : MatrixTheme.textMuted)
+                }
+            }
+
+            // Row-major vs column-major toggle
+            Picker("Layout", selection: $memoryLayoutMode) {
+                ForEach(MemoryLayoutMode.allCases, id: \.self) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Text(memoryLayoutMode == .rowMajor
+                 ? "Row-major: elements in the same row are contiguous in memory"
+                 : "Column-major: elements in the same column are contiguous in memory")
+                .font(MatrixTheme.captionFont(9))
+                .foregroundColor(MatrixTheme.textMuted)
+
+            // The memory strip
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 1) {
+                    ForEach(0..<(gridSize * gridSize), id: \.self) { linearIdx in
+                        let coord = memoryStripCoord(for: linearIdx)
+                        let rowColor = Self.rowBandColors[coord.row % Self.rowBandColors.count]
+                        let isInActiveCacheLine = showCacheLineHighlight && isInCurrentCacheLine(linearIdx)
+                        let isAccessedCell = isCurrentlyAccessed(coord)
+
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(isAccessedCell
+                                  ? accentForMode
+                                  : rowColor.opacity(isInActiveCacheLine ? 0.8 : 0.35))
+                            .frame(width: 8, height: 32)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 2)
+                                    .stroke(
+                                        isInActiveCacheLine ? MatrixTheme.level4Color.opacity(0.8) : Color.clear,
+                                        lineWidth: 1
+                                    )
+                            )
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            // Legend
+            HStack(spacing: 12) {
+                legendItem(color: .blue.opacity(0.4), label: "Row 0")
+                legendItem(color: .cyan.opacity(0.4), label: "Row 1")
+                legendItem(color: .green.opacity(0.4), label: "Row 2")
+                Text("...")
+                    .font(MatrixTheme.captionFont(9))
+                    .foregroundColor(MatrixTheme.textMuted)
+                if showCacheLineHighlight {
+                    legendItem(color: MatrixTheme.level4Color, label: "Cache line")
+                }
+            }
+        }
+        .labCard(accent: MatrixTheme.level4Color)
+    }
+
+    private func legendItem(color: Color, label: String) -> some View {
+        HStack(spacing: 3) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(color)
+                .frame(width: 10, height: 10)
+            Text(label)
+                .font(MatrixTheme.captionFont(9))
+                .foregroundColor(MatrixTheme.textMuted)
+        }
+    }
+
+    /// Convert linear index to (row, col) based on current layout mode
+    private func memoryStripCoord(for linearIdx: Int) -> CellCoord {
+        if memoryLayoutMode == .rowMajor {
+            return CellCoord(row: linearIdx / gridSize, col: linearIdx % gridSize)
+        } else {
+            return CellCoord(row: linearIdx % gridSize, col: linearIdx / gridSize)
+        }
+    }
+
+    /// Check if a linear index falls inside the cache line containing the current access
+    private func isInCurrentCacheLine(_ linearIdx: Int) -> Bool {
+        guard let activeB = activeCellB else { return false }
+        let activeLinear: Int
+        if memoryLayoutMode == .rowMajor {
+            activeLinear = activeB.row * gridSize + activeB.col
+        } else {
+            activeLinear = activeB.col * gridSize + activeB.row
+        }
+        let cacheLineStart = (activeLinear / 8) * 8
+        return linearIdx >= cacheLineStart && linearIdx < cacheLineStart + 8
+    }
+
+    /// Check if a coordinate is the currently accessed cell in either matrix
+    private func isCurrentlyAccessed(_ coord: CellCoord) -> Bool {
+        coord == activeCellA || coord == activeCellB
+    }
+
+    // MARK: - Cache Line Detail Card
+
+    private var cacheLineDetailCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Cache Line Utilization")
+                .font(MatrixTheme.captionFont(11))
+                .foregroundColor(MatrixTheme.textSecondary)
+
+            Text("Each cache load brings 8 consecutive memory cells. How many are useful?")
+                .font(MatrixTheme.captionFont(9))
+                .foregroundColor(MatrixTheme.textMuted)
+
+            // The 8 cells of a cache line
+            HStack(spacing: 3) {
+                ForEach(0..<8, id: \.self) { cellIdx in
+                    let isUsed = cacheLineCellIsUsed(cellIdx)
+                    VStack(spacing: 3) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(isUsed
+                                  ? MatrixTheme.neonGreen.opacity(0.7)
+                                  : MatrixTheme.neonOrange.opacity(0.5))
+                            .frame(height: 36)
+                            .overlay(
+                                Text(isUsed ? "U" : "W")
+                                    .font(MatrixTheme.monoFont(10, weight: .bold))
+                                    .foregroundColor(isUsed ? .black : MatrixTheme.textMuted)
+                            )
+                        Text("[\(cellIdx)]")
+                            .font(MatrixTheme.captionFont(8))
+                            .foregroundColor(MatrixTheme.textMuted)
+                    }
+                }
+            }
+
+            // Labels
+            HStack(spacing: 16) {
+                HStack(spacing: 4) {
+                    Circle().fill(MatrixTheme.neonGreen.opacity(0.7)).frame(width: 8, height: 8)
+                    Text("Used").font(MatrixTheme.captionFont(9)).foregroundColor(MatrixTheme.textMuted)
+                }
+                HStack(spacing: 4) {
+                    Circle().fill(MatrixTheme.neonOrange.opacity(0.5)).frame(width: 8, height: 8)
+                    Text("Wasted").font(MatrixTheme.captionFont(9)).foregroundColor(MatrixTheme.textMuted)
+                }
+            }
+
+            // Utilization bar
+            let utilization = cacheLineUtilization
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Utilization")
+                        .font(MatrixTheme.captionFont(10))
+                        .foregroundColor(MatrixTheme.textSecondary)
+                    Spacer()
+                    Text(String(format: "%.0f%%", utilization * 100))
+                        .font(MatrixTheme.monoFont(13, weight: .bold))
+                        .foregroundColor(utilization > 0.5 ? MatrixTheme.neonGreen : MatrixTheme.neonOrange)
+                }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(MatrixTheme.surfaceSecondary)
+                            .frame(height: 8)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(utilization > 0.5 ? MatrixTheme.neonGreen : MatrixTheme.neonOrange)
+                            .frame(width: geo.size.width * utilization, height: 8)
+                    }
+                }
+                .frame(height: 8)
+            }
+
+            // Explanation
+            Text(memoryLayoutMode == .rowMajor
+                 ? "Row-major + row access: all 8 cells in each cache line are used sequentially. Maximum cache efficiency!"
+                 : "Column-major layout or column access: only 1 of 8 cells is needed per cache load. 87.5% of loaded data is wasted.")
+                .font(MatrixTheme.captionFont(9))
+                .foregroundColor(MatrixTheme.textMuted)
+                .lineSpacing(2)
+        }
+        .labCard(accent: MatrixTheme.level4Color)
+    }
+
+    /// Determine if a cell in the cache line is "used" based on layout mode
+    private func cacheLineCellIsUsed(_ cellIdx: Int) -> Bool {
+        if memoryLayoutMode == .rowMajor {
+            // Row-major sequential access: all 8 cells used
+            return true
+        } else {
+            // Column-major / stride access: only cell 0 is used
+            return cellIdx == 0
+        }
+    }
+
+    private var cacheLineUtilization: Double {
+        memoryLayoutMode == .rowMajor ? 1.0 : 1.0 / 8.0
+    }
+
+    // MARK: - Code Display Section
+
+    private var codeDisplaySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Algorithm Comparison")
+                .font(MatrixTheme.captionFont(11))
+                .foregroundColor(MatrixTheme.textSecondary)
+
+            ViewThatFits(in: .horizontal) {
+                // Wide: side by side
+                HStack(alignment: .top, spacing: 12) {
+                    codeBlock(title: "Naive O(n\u{00B3})", lines: naiveCodeLines, highlightColor: MatrixTheme.neonOrange)
+                    codeBlock(title: "Blocked (Tiled)", lines: blockedCodeLines, highlightColor: MatrixTheme.neonGreen)
+                }
+
+                // Narrow: stacked
+                VStack(spacing: 12) {
+                    codeBlock(title: "Naive O(n\u{00B3})", lines: naiveCodeLines, highlightColor: MatrixTheme.neonOrange)
+                    codeBlock(title: "Blocked (Tiled)", lines: blockedCodeLines, highlightColor: MatrixTheme.neonGreen)
+                }
+            }
+        }
+        .labCard(accent: MatrixTheme.level4Color)
+    }
+
+    private func codeBlock(title: String, lines: [CodeLine], highlightColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(MatrixTheme.captionFont(10))
+                .foregroundColor(highlightColor)
+                .padding(.bottom, 2)
+
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(lines.enumerated()), id: \.offset) { idx, line in
+                    let isActive = isCodeLineActive(lineIndex: idx, totalLines: lines.count)
+                    HStack(spacing: 4) {
+                        Text(String(format: "%2d", idx + 1))
+                            .font(.system(size: 8, weight: .regular, design: .monospaced))
+                            .foregroundColor(MatrixTheme.textMuted.opacity(0.5))
+                            .frame(width: 14, alignment: .trailing)
+
+                        syntaxHighlightedText(line)
+                    }
+                    .padding(.vertical, 1)
+                    .padding(.horizontal, 4)
+                    .background(
+                        isActive
+                            ? highlightColor.opacity(0.15)
+                            : Color.clear
+                    )
+                }
+            }
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(MatrixTheme.background)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(MatrixTheme.gridLine, lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    /// Determines if a code line should be highlighted based on stepIndex
+    private func isCodeLineActive(lineIndex: Int, totalLines: Int) -> Bool {
+        guard isPlaying || stepIndex > 0 else { return false }
+        // Map stepIndex to a line in the code block, cycling through
+        let activeLine = stepIndex % totalLines
+        return lineIndex == activeLine
+    }
+
+    /// Tokenize a CodeLine and return a syntax-highlighted Text view
+    private func syntaxHighlightedText(_ line: CodeLine) -> some View {
+        var result = Text("")
+        for token in line.tokens {
+            let colored: Text
+            switch token.kind {
+            case .keyword:
+                colored = Text(token.text)
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.blue)
+            case .type, .number:
+                colored = Text(token.text)
+                    .font(.system(size: 10, weight: .regular, design: .monospaced))
+                    .foregroundColor(.cyan)
+            case .comment:
+                colored = Text(token.text)
+                    .font(.system(size: 10, weight: .regular, design: .monospaced))
+                    .foregroundColor(.green.opacity(0.6))
+            case .op:
+                colored = Text(token.text)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(.orange)
+            case .plain:
+                colored = Text(token.text)
+                    .font(.system(size: 10, weight: .regular, design: .monospaced))
+                    .foregroundColor(MatrixTheme.textSecondary)
+            }
+            result = result + colored
+        }
+        return result
+    }
+
+    // MARK: - Code Data Model
+
+    private var naiveCodeLines: [CodeLine] {
+        [
+            CodeLine(tokens: [.kw("for"), .pl(" i "), .kw("in"), .pl(" "), .num("0"), .op("..<"), .tp("N"), .pl(" {")]),
+            CodeLine(tokens: [.pl("  "), .kw("for"), .pl(" j "), .kw("in"), .pl(" "), .num("0"), .op("..<"), .tp("N"), .pl(" {")]),
+            CodeLine(tokens: [.pl("    "), .kw("for"), .pl(" k "), .kw("in"), .pl(" "), .num("0"), .op("..<"), .tp("N"), .pl(" {")]),
+            CodeLine(tokens: [.pl("      C[i][j] "), .op("+="), .pl(" A[i][k] "), .op("*"), .pl(" B[k][j]")]),
+            CodeLine(tokens: [.pl("    }")]),
+            CodeLine(tokens: [.pl("  }")]),
+            CodeLine(tokens: [.pl("}")]),
+        ]
+    }
+
+    private var blockedCodeLines: [CodeLine] {
+        [
+            CodeLine(tokens: [.kw("for"), .pl(" ii "), .kw("in"), .pl(" stride("), .num("0"), .pl(", "), .tp("N"), .pl(", "), .tp("B"), .pl(") {")]),
+            CodeLine(tokens: [.pl("  "), .kw("for"), .pl(" jj "), .kw("in"), .pl(" stride("), .num("0"), .pl(", "), .tp("N"), .pl(", "), .tp("B"), .pl(") {")]),
+            CodeLine(tokens: [.pl("    "), .kw("for"), .pl(" kk "), .kw("in"), .pl(" stride("), .num("0"), .pl(", "), .tp("N"), .pl(", "), .tp("B"), .pl(") {")]),
+            CodeLine(tokens: [.pl("      "), .cm("// Block multiply")]),
+            CodeLine(tokens: [.pl("      "), .kw("for"), .pl(" i "), .kw("in"), .pl(" ii"), .op("..<"), .pl("min(ii"), .op("+"), .tp("B"), .pl(", "), .tp("N"), .pl(") {")]),
+            CodeLine(tokens: [.pl("        "), .kw("for"), .pl(" j "), .kw("in"), .pl(" jj"), .op("..<"), .pl("min(jj"), .op("+"), .tp("B"), .pl(", "), .tp("N"), .pl(") {")]),
+            CodeLine(tokens: [.pl("          "), .kw("for"), .pl(" k "), .kw("in"), .pl(" kk"), .op("..<"), .pl("min(kk"), .op("+"), .tp("B"), .pl(", "), .tp("N"), .pl(") {")]),
+            CodeLine(tokens: [.pl("            C[i][j] "), .op("+="), .pl(" A[i][k] "), .op("*"), .pl(" B[k][j]")]),
+            CodeLine(tokens: [.pl("          }")]),
+            CodeLine(tokens: [.pl("        }")]),
+            CodeLine(tokens: [.pl("      }")]),
+            CodeLine(tokens: [.pl("    }")]),
+            CodeLine(tokens: [.pl("  }")]),
+            CodeLine(tokens: [.pl("}")]),
+        ]
     }
 
     // MARK: - FPS Gauge
