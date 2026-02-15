@@ -31,6 +31,14 @@ struct LinearAlgebraLabView: View {
             case .similarity:
                 SimilarityTab()
             }
+
+            // Challenges & Did You Know
+            VStack(spacing: MatrixTheme.spacing) {
+                ChallengesView(level: .linearAlgebra)
+                DidYouKnowCard(level: .linearAlgebra)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 16)
         }
         .background(MatrixTheme.background)
         .navigationTitle("Linear Algebra Lab")

@@ -433,6 +433,10 @@ private extension GeometryLabView {
 
     var hudBottomBar: some View {
         VStack(spacing: 12) {
+            // Challenges & Did You Know
+            ChallengesView(level: .geometry)
+            DidYouKnowCard(level: .geometry)
+
             // Preset buttons
             presetButtons
 

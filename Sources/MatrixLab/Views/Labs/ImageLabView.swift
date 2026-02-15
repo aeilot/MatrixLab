@@ -192,6 +192,8 @@ struct ImageLabView: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
+                ChallengesView(level: .image)
+                DidYouKnowCard(level: .image)
             }
             .padding(.horizontal)
             .padding(.bottom, 40)
@@ -210,6 +212,8 @@ struct ImageLabView: View {
                 stepByStepButton
                 channelSlidersSection
                 infoButton
+                ChallengesView(level: .image)
+                DidYouKnowCard(level: .image)
             }
             .padding(.horizontal)
             .padding(.bottom, 40)

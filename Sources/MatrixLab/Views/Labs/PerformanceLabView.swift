@@ -146,6 +146,10 @@ struct PerformanceLabView: View {
                 benchmarkSection
                     .padding(.horizontal)
                 infoButton
+                ChallengesView(level: .performance)
+                    .padding(.horizontal)
+                DidYouKnowCard(level: .performance)
+                    .padding(.horizontal)
             }
             .padding(.vertical)
         }
