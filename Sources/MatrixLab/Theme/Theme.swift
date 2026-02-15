@@ -175,6 +175,35 @@ struct BracketView: View {
     }
 }
 
+// MARK: - Long-Press Tooltip Modifier
+
+struct TooltipModifier: ViewModifier {
+    let explanation: String
+    @State private var showTooltip = false
+
+    func body(content: Content) -> some View {
+        content
+            .onLongPressGesture {
+                showTooltip = true
+            }
+            .popover(isPresented: $showTooltip) {
+                Text(explanation)
+                    .font(MatrixTheme.bodyFont(13))
+                    .foregroundColor(MatrixTheme.textPrimary)
+                    .padding(12)
+                    .frame(maxWidth: 260)
+                    .background(MatrixTheme.surfacePrimary)
+
+            }
+    }
+}
+
+extension View {
+    func tooltip(_ explanation: String) -> some View {
+        modifier(TooltipModifier(explanation: explanation))
+    }
+}
+
 // MARK: - Info Popup View
 
 struct InfoPopupView: View {

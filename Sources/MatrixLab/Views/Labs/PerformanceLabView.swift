@@ -84,6 +84,7 @@ struct PerformanceLabView: View {
     @State private var accessMode: AccessMode = .naive
     @State private var animationSpeed: Double = 0.5 // 0.1 = fast, 1.0 = slow
     @State private var stepIndex: Int = 0
+    @State private var stepMode = false
 
     // Grid highlight state
     @State private var activeCellA: CellCoord? = nil
@@ -236,26 +237,63 @@ struct PerformanceLabView: View {
                 buildSequences()
             }
 
+            // Step mode toggle
+            Toggle(isOn: $stepMode) {
+                Text("Step Mode")
+                    .font(MatrixTheme.captionFont(12))
+                    .foregroundColor(MatrixTheme.textSecondary)
+            }
+            .toggleStyle(SwitchToggleStyle(tint: MatrixTheme.level4Color))
+            .accessibilityLabel("Step-by-step mode")
+            .onChange(of: stepMode) { newValue in
+                if newValue {
+                    stopAnimation()
+                }
+            }
+
             HStack(spacing: 16) {
-                // Play / Pause
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    if isPlaying {
-                        stopAnimation()
-                    } else {
-                        startAnimation()
-                    }
-                } label: {
-                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title3)
+                if stepMode {
+                    // Next Step button
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        advanceStep()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "forward.frame.fill")
+                                .font(.title3)
+                            Text("Next Step")
+                                .font(MatrixTheme.bodyFont(13))
+                        }
                         .foregroundColor(MatrixTheme.level4Color)
-                        .frame(width: 44, height: 36)
+                        .frame(height: 36)
+                        .padding(.horizontal, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(MatrixTheme.level4Color.opacity(0.15))
                         )
+                    }
+                    .accessibilityLabel("Advance one step")
+                } else {
+                    // Play / Pause
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        if isPlaying {
+                            stopAnimation()
+                        } else {
+                            startAnimation()
+                        }
+                    } label: {
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            .font(.title3)
+                            .foregroundColor(MatrixTheme.level4Color)
+                            .frame(width: 44, height: 36)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(MatrixTheme.level4Color.opacity(0.15))
+                            )
+                    }
+                    .accessibilityLabel(isPlaying ? "Pause animation" : "Play animation")
                 }
-                .accessibilityLabel(isPlaying ? "Pause animation" : "Play animation")
 
                 // Reset
                 Button {
@@ -285,21 +323,23 @@ struct PerformanceLabView: View {
                 }
                 .accessibilityLabel(soundEnabled ? "Disable sound" : "Enable sound")
 
-                // Speed control
-                VStack(spacing: 2) {
-                    Text("Speed")
-                        .font(MatrixTheme.captionFont(10))
-                        .foregroundColor(MatrixTheme.textMuted)
-                    Slider(value: $animationSpeed, in: 0.05...0.6)
-                        .tint(MatrixTheme.level4Color)
-                        .frame(width: 100)
-                        .accessibilityLabel("Animation speed")
-                        .onChange(of: animationSpeed) { _ in
-                            if isPlaying {
-                                stopAnimation()
-                                startAnimation()
+                if !stepMode {
+                    // Speed control (hidden in step mode)
+                    VStack(spacing: 2) {
+                        Text("Speed")
+                            .font(MatrixTheme.captionFont(10))
+                            .foregroundColor(MatrixTheme.textMuted)
+                        Slider(value: $animationSpeed, in: 0.05...0.6)
+                            .tint(MatrixTheme.level4Color)
+                            .frame(width: 100)
+                            .accessibilityLabel("Animation speed")
+                            .onChange(of: animationSpeed) { _ in
+                                if isPlaying {
+                                    stopAnimation()
+                                    startAnimation()
+                                }
                             }
-                        }
+                    }
                 }
             }
         }
@@ -905,12 +945,14 @@ struct PerformanceLabView: View {
                 value: cacheHits,
                 color: MatrixTheme.neonGreen
             )
+            .tooltip("A cache hit means the data was already in fast CPU cache memory.")
             statRow(
                 icon: "xmark.circle.fill",
                 label: "Misses",
                 value: cacheMisses,
                 color: MatrixTheme.neonOrange
             )
+            .tooltip("A cache miss forces the CPU to wait for slow main memory.")
 
             Divider()
                 .background(MatrixTheme.gridLine)
@@ -925,6 +967,7 @@ struct PerformanceLabView: View {
                     .foregroundColor(hitRateColor)
                     .contentTransition(.numericText())
             }
+            .tooltip("Percentage of memory accesses served from cache. Higher is better.")
         }
         .labCard(accent: MatrixTheme.level4Color)
         .accessibilityLabel("Cache hit rate")

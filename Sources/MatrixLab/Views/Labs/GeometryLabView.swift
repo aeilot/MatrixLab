@@ -409,6 +409,7 @@ private extension GeometryLabView {
                     label: "Transform",
                     accentColor: MatrixTheme.level1Color
                 )
+                .tooltip("Each column is where a basis vector lands after the transformation.")
 
                 // Determinant
                 HStack(spacing: 6) {
@@ -424,6 +425,7 @@ private extension GeometryLabView {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Determinant")
                 .accessibilityValue(String(format: "%.2f", matrix.determinant))
+                .tooltip("The determinant measures how the transformation scales area. Negative means orientation is flipped.")
             }
             .labCard(accent: MatrixTheme.level1Color)
 
