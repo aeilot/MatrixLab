@@ -181,6 +181,7 @@ struct ImageLabView: View {
                     VStack(spacing: MatrixTheme.spacing) {
                         presetButtonsSection
                         kernelEditorSection
+                        formulaSection
                         channelSlidersSection
                         infoButton
                     }
@@ -200,6 +201,7 @@ struct ImageLabView: View {
                 imageComparisonSection
                 presetButtonsSection
                 kernelEditorSection
+                formulaSection
                 channelSlidersSection
                 infoButton
             }
@@ -668,6 +670,85 @@ struct ImageLabView: View {
                 .font(MatrixTheme.monoFont(12))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .frame(width: 40, alignment: .trailing)
+        }
+    }
+
+    // MARK: - Formula Card
+
+    @ViewBuilder
+    private var formulaSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("THE MATH")
+                .font(MatrixTheme.captionFont(11))
+                .foregroundColor(accent)
+                .tracking(2)
+
+            // General formula
+            Text("O(x,y) = \u{03A3}\u{1D62} \u{03A3}\u{2C7C} K(i,j) \u{00B7} I(x+i, y+j)")
+                .font(MatrixTheme.monoFont(13))
+                .foregroundColor(MatrixTheme.textSecondary)
+
+            // Expanded with actual kernel values
+            VStack(alignment: .leading, spacing: 4) {
+                buildExpandedFormula()
+            }
+        }
+        .labCard(accent: accent)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Convolution formula for \(kernel.name) kernel")
+    }
+
+    /// Builds a multi-line Text view showing the expanded convolution formula
+    /// with actual kernel values substituted in. Non-zero terms are accented.
+    private func buildExpandedFormula() -> some View {
+        let offsets: [(Int, Int)] = [
+            (-1, -1), (-1, 0), (-1, 1),
+            ( 0, -1), ( 0, 0), ( 0, 1),
+            ( 1, -1), ( 1, 0), ( 1, 1),
+        ]
+
+        // Collect (coefficient, offset label) pairs
+        let terms: [(Double, String)] = offsets.enumerated().map { idx, off in
+            let row = idx / 3
+            let col = idx % 3
+            let value = kernel.values[row][col]
+            let iLabel = off.0 == 0 ? "x" : (off.0 > 0 ? "x+\(off.0)" : "x\(off.0)")
+            let jLabel = off.1 == 0 ? "y" : (off.1 > 0 ? "y+\(off.1)" : "y\(off.1)")
+            return (value, "I(\(iLabel),\(jLabel))")
+        }
+
+        // Build the formula lines: "= coeff·I(...) + coeff·I(...) + ..."
+        // Split across rows of 3 terms for readability
+        let rows = stride(from: 0, to: terms.count, by: 3).map { start in
+            Array(terms[start..<min(start + 3, terms.count)])
+        }
+
+        return VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { rowIdx, rowTerms in
+                HStack(spacing: 0) {
+                    // Leading prefix: "= " for first row, "+ " continuation otherwise
+                    Text(rowIdx == 0 ? "= " : "  ")
+                        .font(MatrixTheme.monoFont(11))
+                        .foregroundColor(MatrixTheme.textSecondary)
+
+                    ForEach(Array(rowTerms.enumerated()), id: \.offset) { termIdx, term in
+                        let coeff = term.0
+                        let label = term.1
+                        let isZero = abs(coeff) < 0.0001
+                        let isFirst = rowIdx == 0 && termIdx == 0
+
+                        if !isFirst {
+                            Text(" + ")
+                                .font(MatrixTheme.monoFont(11))
+                                .foregroundColor(MatrixTheme.textMuted)
+                        }
+
+                        Text("\(formatKernelValue(coeff))\u{00B7}\(label)")
+                            .font(MatrixTheme.monoFont(11))
+                            .foregroundColor(isZero ? MatrixTheme.textMuted.opacity(0.5) : accent)
+                    }
+                }
+            }
         }
     }
 
