@@ -565,13 +565,13 @@ struct ImageLabView: View {
                     .foregroundColor(MatrixTheme.textMuted)
             }
 
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3),
-                spacing: 8
-            ) {
+            // Use VStack + HStack for reliable 3x3 layout
+            VStack(spacing: 8) {
                 ForEach(0..<3, id: \.self) { row in
-                    ForEach(0..<3, id: \.self) { col in
-                        kernelCell(row: row, col: col)
+                    HStack(spacing: 8) {
+                        ForEach(0..<3, id: \.self) { col in
+                            kernelCell(row: row, col: col)
+                        }
                     }
                 }
             }
@@ -615,7 +615,7 @@ struct ImageLabView: View {
         .foregroundColor(isCenter ? accent : MatrixTheme.textPrimary)
         .multilineTextAlignment(.center)
         .keyboardType(.numbersAndPunctuation)
-        .frame(minHeight: 48)
+        .frame(maxWidth: .infinity, minHeight: 48)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(

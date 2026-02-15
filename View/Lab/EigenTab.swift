@@ -438,53 +438,102 @@ private extension EigenTab {
                 .font(MatrixTheme.captionFont())
                 .foregroundColor(MatrixTheme.textSecondary)
 
-            // Editable 2x2 matrix with text fields
+            // Editable 2x2 matrix with text fields + steppers
             VStack(spacing: 4) {
                 HStack(spacing: 8) {
-                    matrixTextField(text: $editText00, field: .m00) { matrix.m00 = $0 }
-                    matrixTextField(text: $editText01, field: .m01) { matrix.m01 = $0 }
+                    matrixStepperField(text: $editText00, field: .m00) { matrix.m00 = $0 }
+                    matrixStepperField(text: $editText01, field: .m01) { matrix.m01 = $0 }
                 }
                 HStack(spacing: 8) {
-                    matrixTextField(text: $editText10, field: .m10) { matrix.m10 = $0 }
-                    matrixTextField(text: $editText11, field: .m11) { matrix.m11 = $0 }
+                    matrixStepperField(text: $editText10, field: .m10) { matrix.m10 = $0 }
+                    matrixStepperField(text: $editText11, field: .m11) { matrix.m11 = $0 }
                 }
             }
         }
         .labCard(accent: accent)
-        .frame(width: 180)
+        .frame(width: 220)
     }
 
-    func matrixTextField(text: Binding<String>, field: MatrixField, onChange: @escaping (Double) -> Void) -> some View {
-        TextField("0", text: text)
-            .font(MatrixTheme.monoFont(20, weight: .semibold))
-            .foregroundColor(MatrixTheme.textPrimary)
-            .multilineTextAlignment(.center)
-            .keyboardType(.numbersAndPunctuation)
-            .focused($focusedField, equals: field)
-            .frame(width: 60, height: 36)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(MatrixTheme.surfaceSecondary)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(focusedField == field ? accent : accent.opacity(0.3), lineWidth: focusedField == field ? 2 : 1)
-                    )
-            )
-            .onSubmit {
-                if let val = Double(text.wrappedValue) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+    func matrixStepperField(text: Binding<String>, field: MatrixField, onChange: @escaping (Double) -> Void) -> some View {
+        HStack(spacing: 2) {
+            // Decrement button
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                let current = Double(text.wrappedValue) ?? 0
+                let newVal = current - 0.5
+                text.wrappedValue = formatStepperValue(newVal)
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    onChange(newVal)
+                }
+            } label: {
+                Image(systemName: "minus")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(accent)
+                    .frame(width: 20, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Decrease value")
+
+            // Text field
+            TextField("0", text: text)
+                .font(MatrixTheme.monoFont(18, weight: .semibold))
+                .foregroundColor(MatrixTheme.textPrimary)
+                .multilineTextAlignment(.center)
+                .keyboardType(.numbersAndPunctuation)
+                .focused($focusedField, equals: field)
+                .frame(width: 44, height: 36)
+                .onSubmit {
+                    if let val = Double(text.wrappedValue) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            onChange(val)
+                        }
+                    }
+                    focusedField = nil
+                }
+                .onChange(of: text.wrappedValue) { newValue in
+                    if let val = Double(newValue) {
                         onChange(val)
                     }
                 }
-                focusedField = nil
-            }
-            .onChange(of: text.wrappedValue) { newValue in
-                if let val = Double(newValue) {
-                    onChange(val)
+
+            // Increment button
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                let current = Double(text.wrappedValue) ?? 0
+                let newVal = current + 0.5
+                text.wrappedValue = formatStepperValue(newVal)
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    onChange(newVal)
                 }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(accent)
+                    .frame(width: 20, height: 36)
+                    .contentShape(Rectangle())
             }
-            .accessibilityLabel("Matrix entry \(text.wrappedValue)")
-            .accessibilityHint("Type a number to set this entry")
+            .buttonStyle(.plain)
+            .accessibilityLabel("Increase value")
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(MatrixTheme.surfaceSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(focusedField == field ? accent : accent.opacity(0.3), lineWidth: focusedField == field ? 2 : 1)
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Matrix entry \(text.wrappedValue)")
+        .accessibilityHint("Type a number or use stepper buttons to adjust by 0.5")
+    }
+
+    private func formatStepperValue(_ value: Double) -> String {
+        if value == value.rounded() {
+            return String(Int(value))
+        }
+        return String(format: "%.1f", value)
     }
 
     var eigenInfoCard: some View {
