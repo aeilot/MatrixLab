@@ -157,7 +157,7 @@ struct LevelCard: View {
 
                 Spacer()
 
-                VStack(spacing: 8) {
+                HStack(spacing: 8) {
                     Image(systemName: level.icon)
                         .foregroundColor(level.accentColor.opacity(0.6))
                         .font(.title3)
