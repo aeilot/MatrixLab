@@ -64,6 +64,7 @@ struct ImageLabView: View {
     @State private var showInfo = false
     @State private var selectedPresetIndex = 0
     @State private var shimmerActive = false
+    @State private var showConvolutionAnimation = false
 
     // RGB channel weights
     @State private var redWeight: Double = 1.0
@@ -126,6 +127,9 @@ struct ImageLabView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: showInfo)
+        .sheet(isPresented: $showConvolutionAnimation) {
+            ConvolutionAnimationView(kernel: kernel)
+        }
         .task {
             generateThumbnails()
             if savedPresetIndex > 0 && savedPresetIndex < ConvolutionKernel.presets.count {
@@ -182,6 +186,7 @@ struct ImageLabView: View {
                         presetButtonsSection
                         kernelEditorSection
                         formulaSection
+                        stepByStepButton
                         channelSlidersSection
                         infoButton
                     }
@@ -202,6 +207,7 @@ struct ImageLabView: View {
                 presetButtonsSection
                 kernelEditorSection
                 formulaSection
+                stepByStepButton
                 channelSlidersSection
                 infoButton
             }
@@ -752,6 +758,30 @@ struct ImageLabView: View {
         }
     }
 
+    // MARK: - Step-by-Step Animation Button
+
+    private var stepByStepButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            showConvolutionAnimation = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "play.rectangle.on.rectangle")
+                    .foregroundColor(accent)
+                Text("See It Step by Step")
+                    .font(MatrixTheme.monoFont(13, weight: .medium))
+                    .foregroundColor(MatrixTheme.textPrimary)
+                Spacer()
+                Image(systemName: "arrow.up.right.square")
+                    .font(.caption)
+                    .foregroundColor(MatrixTheme.textMuted)
+            }
+            .labCard(accent: accent)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("See convolution step by step animation")
+    }
+
     // MARK: - Info Button
 
     private var infoButton: some View {
@@ -1261,6 +1291,452 @@ private struct SplitMix64: RandomNumberGenerator {
         z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
         z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
         return z ^ (z >> 31)
+    }
+}
+
+// MARK: - Convolution Animation View
+
+/// Step-by-step sliding window animation showing how a 3x3 kernel convolves a 5x5 input grid.
+struct ConvolutionAnimationView: View {
+    let kernel: ConvolutionKernel
+    @State private var currentRow = 0
+    @State private var currentCol = 0
+    @State private var isPlaying = false
+    @State private var outputValues: [[Double]] = Array(
+        repeating: Array(repeating: 0, count: 3), count: 3
+    )
+    @State private var computed: [[Bool]] = Array(
+        repeating: Array(repeating: false, count: 3), count: 3
+    )
+    @State private var timer: Timer?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let accent = MatrixTheme.level3Color
+
+    // Sample 5x5 input representing pixel intensities
+    private let inputPixels: [[Double]] = [
+        [100, 150, 200, 150, 100],
+        [ 50, 100, 150, 100,  50],
+        [200, 250, 255, 250, 200],
+        [ 50, 100, 150, 100,  50],
+        [100, 150, 200, 150, 100],
+    ]
+
+    /// Whether the animation has finished all 9 positions.
+    private var isFinished: Bool {
+        currentRow == 2 && currentCol == 2 && computed[2][2]
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: MatrixTheme.spacing) {
+                    headerView
+                    gridsSection
+                    dotProductSection
+                    controlsSection
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 40)
+            }
+            .background(MatrixTheme.background)
+            .navigationTitle("Convolution Animation")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        stopTimer()
+                        dismiss()
+                    }
+                    .font(MatrixTheme.monoFont(14, weight: .semibold))
+                    .foregroundColor(accent)
+                }
+            }
+        }
+    }
+
+    // MARK: - Header
+
+    private var headerView: some View {
+        VStack(spacing: 6) {
+            Text("SLIDING WINDOW")
+                .font(MatrixTheme.captionFont(11))
+                .foregroundColor(accent)
+                .tracking(4)
+
+            Text("Watch the kernel slide across the input")
+                .font(MatrixTheme.bodyFont(14))
+                .foregroundColor(MatrixTheme.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.top, 8)
+    }
+
+    // MARK: - Grids
+
+    private var gridsSection: some View {
+        HStack(alignment: .top, spacing: 20) {
+            VStack(spacing: 8) {
+                Text("INPUT  5\u{00D7}5")
+                    .font(MatrixTheme.captionFont(10))
+                    .foregroundColor(MatrixTheme.textSecondary)
+                    .tracking(1)
+                inputGrid
+            }
+
+            VStack(spacing: 4) {
+                Spacer().frame(height: 20)
+                Image(systemName: "arrow.right")
+                    .font(.title3)
+                    .foregroundColor(accent.opacity(0.6))
+                Text(kernel.name)
+                    .font(MatrixTheme.captionFont(9))
+                    .foregroundColor(MatrixTheme.textMuted)
+                    .lineLimit(1)
+            }
+
+            VStack(spacing: 8) {
+                Text("OUTPUT  3\u{00D7}3")
+                    .font(MatrixTheme.captionFont(10))
+                    .foregroundColor(MatrixTheme.textSecondary)
+                    .tracking(1)
+                outputGrid
+            }
+        }
+        .labCard(accent: accent)
+    }
+
+    private var inputGrid: some View {
+        VStack(spacing: 2) {
+            ForEach(0..<5, id: \.self) { row in
+                HStack(spacing: 2) {
+                    ForEach(0..<5, id: \.self) { col in
+                        inputCell(row: row, col: col)
+                    }
+                }
+            }
+        }
+    }
+
+    private func inputCell(row: Int, col: Int) -> some View {
+        let value = inputPixels[row][col]
+        let brightness = value / 255.0
+        let isInKernel = row >= currentRow && row < currentRow + 3
+            && col >= currentCol && col < currentCol + 3
+
+        return Text(String(Int(value)))
+            .font(MatrixTheme.monoFont(9, weight: .medium))
+            .foregroundColor(
+                isInKernel ? MatrixTheme.textPrimary : MatrixTheme.textMuted
+            )
+            .frame(width: 38, height: 38)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(
+                        isInKernel
+                            ? accent.opacity(0.15 + brightness * 0.4)
+                            : Color(white: brightness * 0.3).opacity(0.8)
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(
+                        isInKernel ? accent.opacity(0.8) : Color.clear,
+                        lineWidth: isInKernel ? 1.5 : 0
+                    )
+            )
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 0.25),
+                value: isInKernel
+            )
+    }
+
+    private var outputGrid: some View {
+        VStack(spacing: 2) {
+            ForEach(0..<3, id: \.self) { row in
+                HStack(spacing: 2) {
+                    ForEach(0..<3, id: \.self) { col in
+                        outputCell(row: row, col: col)
+                    }
+                }
+            }
+        }
+    }
+
+    private func outputCell(row: Int, col: Int) -> some View {
+        let isComputed = computed[row][col]
+        let isCurrent = row == currentRow && col == currentCol && !isComputed
+        let rawValue = outputValues[row][col]
+        // Clamp to 0...255 for display brightness
+        let clamped = max(0, min(255, rawValue))
+        let brightness = clamped / 255.0
+
+        return ZStack {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(
+                    isComputed
+                        ? Color(white: brightness * 0.8).opacity(0.9)
+                        : MatrixTheme.surfaceSecondary
+                )
+
+            if isComputed {
+                Text(String(Int(rawValue)))
+                    .font(MatrixTheme.monoFont(9, weight: .bold))
+                    .foregroundColor(MatrixTheme.textPrimary)
+            } else if isCurrent {
+                Text("?")
+                    .font(MatrixTheme.monoFont(11, weight: .bold))
+                    .foregroundColor(accent)
+            }
+        }
+        .frame(width: 48, height: 48)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(
+                    isCurrent
+                        ? accent.opacity(0.8)
+                        : (isComputed ? accent.opacity(0.3) : accent.opacity(0.1)),
+                    lineWidth: isCurrent ? 2 : 1
+                )
+        )
+        .neonGlow(isCurrent ? accent : .clear, radius: isCurrent ? 4 : 0)
+    }
+
+    // MARK: - Dot Product Display
+
+    private var dotProductSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "function")
+                    .foregroundColor(accent)
+                Text("Dot Product at (\(currentRow), \(currentCol))")
+                    .font(MatrixTheme.monoFont(13, weight: .semibold))
+                    .foregroundColor(MatrixTheme.textPrimary)
+                Spacer()
+            }
+
+            // Show each multiplication term
+            let terms = currentTerms()
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(0..<3, id: \.self) { kRow in
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { kCol in
+                            let idx = kRow * 3 + kCol
+                            let term = terms[idx]
+                            let isNonZero = abs(term.kernelVal) > 0.0001
+
+                            HStack(spacing: 2) {
+                                Text(formatVal(term.kernelVal))
+                                    .foregroundColor(isNonZero ? accent : MatrixTheme.textMuted)
+                                Text("\u{00D7}")
+                                    .foregroundColor(MatrixTheme.textMuted)
+                                Text(String(Int(term.pixelVal)))
+                                    .foregroundColor(
+                                        isNonZero
+                                            ? MatrixTheme.textPrimary
+                                            : MatrixTheme.textMuted
+                                    )
+                            }
+                            .font(MatrixTheme.monoFont(10))
+
+                            if kCol < 2 {
+                                Text("+")
+                                    .font(MatrixTheme.monoFont(10))
+                                    .foregroundColor(MatrixTheme.textMuted)
+                            }
+                        }
+
+                        if kRow < 2 {
+                            Text("+")
+                                .font(MatrixTheme.monoFont(10))
+                                .foregroundColor(MatrixTheme.textMuted)
+                        }
+                    }
+                }
+            }
+
+            // Result
+            let dotResult = computeDotProduct(row: currentRow, col: currentCol)
+            HStack(spacing: 4) {
+                Text("=")
+                    .font(MatrixTheme.monoFont(14, weight: .bold))
+                    .foregroundColor(MatrixTheme.textSecondary)
+                Text(String(format: "%.1f", dotResult))
+                    .font(MatrixTheme.monoFont(16, weight: .bold))
+                    .foregroundColor(accent)
+            }
+            .padding(.top, 4)
+        }
+        .labCard(accent: accent)
+    }
+
+    private struct MultiplicationTerm {
+        let kernelVal: Double
+        let pixelVal: Double
+        var product: Double { kernelVal * pixelVal }
+    }
+
+    private func currentTerms() -> [MultiplicationTerm] {
+        var terms: [MultiplicationTerm] = []
+        for i in 0..<3 {
+            for j in 0..<3 {
+                terms.append(MultiplicationTerm(
+                    kernelVal: kernel.values[i][j],
+                    pixelVal: inputPixels[currentRow + i][currentCol + j]
+                ))
+            }
+        }
+        return terms
+    }
+
+    private func computeDotProduct(row: Int, col: Int) -> Double {
+        var sum = 0.0
+        for i in 0..<3 {
+            for j in 0..<3 {
+                sum += kernel.values[i][j] * inputPixels[row + i][col + j]
+            }
+        }
+        return sum
+    }
+
+    // MARK: - Controls
+
+    private var controlsSection: some View {
+        HStack(spacing: 16) {
+            // Reset
+            Button {
+                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                reset()
+            } label: {
+                Label("Reset", systemImage: "arrow.counterclockwise")
+                    .font(MatrixTheme.monoFont(13, weight: .medium))
+                    .foregroundColor(MatrixTheme.textSecondary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(MatrixTheme.surfaceSecondary)
+                    )
+            }
+            .buttonStyle(.plain)
+
+            // Play / Pause
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                if isPlaying {
+                    stopTimer()
+                } else {
+                    startTimer()
+                }
+            } label: {
+                Label(
+                    isPlaying ? "Pause" : "Play",
+                    systemImage: isPlaying ? "pause.fill" : "play.fill"
+                )
+                .font(MatrixTheme.monoFont(13, weight: .semibold))
+                .foregroundColor(MatrixTheme.textPrimary)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(accent.opacity(0.25))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(accent.opacity(0.5), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isFinished && !isPlaying)
+
+            // Step
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                step()
+            } label: {
+                Label("Step", systemImage: "forward.frame.fill")
+                    .font(MatrixTheme.monoFont(13, weight: .medium))
+                    .foregroundColor(MatrixTheme.textSecondary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(MatrixTheme.surfaceSecondary)
+                    )
+            }
+            .buttonStyle(.plain)
+            .disabled(isFinished)
+        }
+        .labCard(accent: accent)
+    }
+
+    // MARK: - Animation Logic
+
+    private func step() {
+        guard !isFinished else { return }
+
+        // Compute current position
+        let result = computeDotProduct(row: currentRow, col: currentCol)
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+            outputValues[currentRow][currentCol] = result
+            computed[currentRow][currentCol] = true
+        }
+
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        // Advance to next position
+        if currentCol < 2 {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) {
+                currentCol += 1
+            }
+        } else if currentRow < 2 {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) {
+                currentRow += 1
+                currentCol = 0
+            }
+        }
+        // else: finished
+    }
+
+    private func reset() {
+        stopTimer()
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+            currentRow = 0
+            currentCol = 0
+            outputValues = Array(repeating: Array(repeating: 0, count: 3), count: 3)
+            computed = Array(repeating: Array(repeating: false, count: 3), count: 3)
+        }
+    }
+
+    private func startTimer() {
+        // If finished, reset first
+        if isFinished {
+            reset()
+        }
+        isPlaying = true
+        timer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { _ in
+            Task { @MainActor in
+                if isFinished {
+                    stopTimer()
+                } else {
+                    step()
+                }
+            }
+        }
+    }
+
+    private func stopTimer() {
+        isPlaying = false
+        timer?.invalidate()
+        timer = nil
+    }
+
+    private func formatVal(_ value: Double) -> String {
+        if abs(value - value.rounded()) < 0.001 {
+            return String(format: "%.0f", value)
+        }
+        return String(format: "%.2f", value)
     }
 }
 
