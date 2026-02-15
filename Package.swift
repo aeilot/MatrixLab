@@ -37,7 +37,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "AppModule",
-            path: "Sources/MatrixLab"
+            path: "."
         )
     ],
     swiftLanguageVersions: [.v6]
