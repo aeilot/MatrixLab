@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreImage
 import CoreImage.CIFilterBuiltins
+import PhotosUI
 
 // MARK: - Sendable wrapper for CoreImage types (not Sendable by default)
 
@@ -15,6 +16,36 @@ private struct FilterInput: @unchecked Sendable {
 
 private struct FilterOutput: @unchecked Sendable {
     let image: UIImage?
+}
+
+// MARK: - Image Source Model
+
+/// Identifies which source image is being filtered.
+private enum ImageSource: Int, CaseIterable, Identifiable {
+    case pattern = 0
+    case gradient = 1
+    case checkerboard = 2
+    case userPhoto = 3
+
+    var id: Int { rawValue }
+
+    var label: String {
+        switch self {
+        case .pattern:      return "Pattern"
+        case .gradient:     return "Gradient"
+        case .checkerboard: return "Checker"
+        case .userPhoto:    return "Photo"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .pattern:      return "circle.hexagongrid"
+        case .gradient:     return "paintbrush"
+        case .checkerboard: return "checkerboard.rectangle"
+        case .userPhoto:    return "photo.on.rectangle"
+        }
+    }
 }
 
 // MARK: - Image Filter Workshop (Level 2)
@@ -38,23 +69,32 @@ struct ImageLabView: View {
     // Editing focus tracking
     @State private var editingCell: (row: Int, col: Int)?
 
+    // Image source
+    @State private var selectedSource: ImageSource = .pattern
+    @State private var sourceImage: CIImage
+    @State private var sourceUIImage: UIImage
+    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var userPhoto: UIImage?
+
+    // Thumbnail caches (generated once)
+    @State private var presetThumbnails: [ImageSource: UIImage] = [:]
+
     private let accent = MatrixTheme.level2Color
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
-    // Source image generated once
-    private let sourceImage: CIImage
-    private let sourceUIImage: UIImage
+    private static let imageSize = 400
 
     init() {
-        let (ci, ui) = Self.generateSourceImage(size: 400)
-        self.sourceImage = ci
-        self.sourceUIImage = ui
+        let (ci, ui) = Self.generatePatternImage(size: Self.imageSize)
+        _sourceImage = State(initialValue: ci)
+        _sourceUIImage = State(initialValue: ui)
     }
 
     var body: some View {
         ScrollView {
             VStack(spacing: MatrixTheme.spacing) {
                 headerSection
+                imageSourceSection
                 imageComparisonSection
                 presetButtonsSection
                 kernelEditorSection
@@ -78,7 +118,10 @@ struct ImageLabView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: showInfo)
-        .task { await applyFilter() }
+        .task {
+            generateThumbnails()
+            await applyFilter()
+        }
         .onChange(of: kernelFingerprint) { _ in
             Task { await applyFilter() }
         }
@@ -90,6 +133,9 @@ struct ImageLabView: View {
         }
         .onChange(of: blueWeight) { _ in
             Task { await applyFilter() }
+        }
+        .onChange(of: photoPickerItem) { _ in
+            Task { await loadUserPhoto() }
         }
     }
 
@@ -113,6 +159,127 @@ struct ImageLabView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.top, 8)
+    }
+
+    // MARK: - Image Source Picker
+
+    private var imageSourceSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "photo.stack")
+                    .foregroundColor(accent)
+                Text("Source Image")
+                    .font(MatrixTheme.monoFont(14, weight: .semibold))
+                    .foregroundColor(MatrixTheme.textPrimary)
+                Spacer()
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    // Preset image thumbnails
+                    ForEach(ImageSource.allCases.filter { $0 != .userPhoto }) { source in
+                        sourceThumbButton(source)
+                    }
+
+                    // Divider
+                    Rectangle()
+                        .fill(accent.opacity(0.2))
+                        .frame(width: 1, height: 60)
+
+                    // Photo picker button
+                    photoPickerButton
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+            }
+        }
+        .labCard(accent: accent)
+    }
+
+    private func sourceThumbButton(_ source: ImageSource) -> some View {
+        let isActive = selectedSource == source
+        return Button {
+            switchSource(to: source)
+        } label: {
+            VStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(MatrixTheme.surfaceSecondary)
+                        .frame(width: 64, height: 64)
+
+                    if let thumb = presetThumbnails[source] {
+                        Image(uiImage: thumb)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 60, height: 60)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    } else {
+                        Image(systemName: source.icon)
+                            .foregroundColor(accent.opacity(0.5))
+                    }
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(
+                            isActive ? accent : accent.opacity(0.15),
+                            lineWidth: isActive ? 2 : 1
+                        )
+                )
+                .neonGlow(isActive ? accent : .clear, radius: isActive ? 4 : 0)
+
+                Text(source.label)
+                    .font(MatrixTheme.captionFont(10))
+                    .foregroundColor(isActive ? MatrixTheme.textPrimary : MatrixTheme.textMuted)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var photoPickerButton: some View {
+        let isActive = selectedSource == .userPhoto
+        let currentUserPhoto = userPhoto  // capture before nonisolated closure
+        return VStack(spacing: 6) {
+            PhotosPicker(
+                selection: $photoPickerItem,
+                matching: .images,
+                photoLibrary: .shared()
+            ) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(MatrixTheme.surfaceSecondary)
+                        .frame(width: 64, height: 64)
+
+                    if let photo = currentUserPhoto {
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 60, height: 60)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    } else {
+                        VStack(spacing: 4) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title3)
+                                .foregroundColor(accent)
+                            Text("Add")
+                                .font(MatrixTheme.captionFont(9))
+                                .foregroundColor(accent.opacity(0.7))
+                        }
+                    }
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(
+                            isActive ? accent : accent.opacity(0.15),
+                            lineWidth: isActive ? 2 : 1
+                        )
+                )
+            }
+            .neonGlow(isActive ? accent : .clear, radius: isActive ? 4 : 0)
+
+            Text(currentUserPhoto != nil ? "Photo" : "Upload")
+                .font(MatrixTheme.captionFont(10))
+                .foregroundColor(isActive ? MatrixTheme.textPrimary : MatrixTheme.textMuted)
+        }
     }
 
     // MARK: - Image Comparison
@@ -140,7 +307,6 @@ struct ImageLabView: View {
                 if showOriginal {
                     Image(uiImage: sourceUIImage)
                         .resizable()
-                        .interpolation(.none)
                         .scaledToFit()
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .padding(8)
@@ -148,7 +314,6 @@ struct ImageLabView: View {
                 } else if let filtered = filteredImage {
                     Image(uiImage: filtered)
                         .resizable()
-                        .interpolation(.none)
                         .scaledToFit()
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .padding(8)
@@ -534,6 +699,48 @@ struct ImageLabView: View {
         }
     }
 
+    /// Switch to a preset image source and re-apply the filter.
+    private func switchSource(to source: ImageSource) {
+        guard source != .userPhoto else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedSource = source
+        }
+        let (ci, ui) = Self.generateImage(for: source, size: Self.imageSize)
+        sourceImage = ci
+        sourceUIImage = ui
+        filteredImage = nil
+        Task { await applyFilter() }
+    }
+
+    /// Load a user-selected photo from the photo picker.
+    private func loadUserPhoto() async {
+        guard let item = photoPickerItem else { return }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let original = UIImage(data: data) else { return }
+
+        // Resize to a square for consistent filter behavior
+        let resized = Self.resizeToSquare(original, size: Self.imageSize)
+        userPhoto = resized
+
+        guard let ciImg = CIImage(image: resized) else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedSource = .userPhoto
+        }
+        sourceImage = ciImg
+        sourceUIImage = resized
+        filteredImage = nil
+        await applyFilter()
+    }
+
+    /// Generate thumbnails for preset sources (runs once on appear).
+    private func generateThumbnails() {
+        let thumbSize = 120
+        for source in ImageSource.allCases where source != .userPhoto {
+            let (_, ui) = Self.generateImage(for: source, size: thumbSize)
+            presetThumbnails[source] = ui
+        }
+    }
+
     // MARK: - Filter Pipeline
 
     private func applyFilter() async {
@@ -558,10 +765,8 @@ struct ImageLabView: View {
 
     /// Pure function that runs the CoreImage filter pipeline off the main actor.
     private nonisolated static func renderFilter(input: FilterInput) -> FilterOutput {
-        // Build CIVector from row-major kernel values
         let vec = CIVector(values: input.weights, count: 9)
 
-        // Apply convolution
         guard let convFilter = CIFilter(
             name: "CIConvolution3X3",
             parameters: [
@@ -573,7 +778,6 @@ struct ImageLabView: View {
             return FilterOutput(image: nil)
         }
 
-        // Apply color channel weights via CIColorMatrix
         var output = convolved
         if input.redWeight != 1.0 || input.greenWeight != 1.0 || input.blueWeight != 1.0 {
             let colorFilter = CIFilter(
@@ -598,7 +802,6 @@ struct ImageLabView: View {
             }
         }
 
-        // Crop to the source extent to avoid infinite-extent issues
         let clamped = output.cropped(to: input.sourceImage.extent)
 
         guard let cgImage = input.ciContext.createCGImage(
@@ -610,16 +813,26 @@ struct ImageLabView: View {
         return FilterOutput(image: UIImage(cgImage: cgImage))
     }
 
-    // MARK: - Source Image Generation
+    // MARK: - Image Generation
 
-    /// Generates a colorful test image with gradients, circles, and lines using CGContext.
-    private static func generateSourceImage(size: Int) -> (CIImage, UIImage) {
+    /// Route to the correct generator for a given source.
+    private static func generateImage(for source: ImageSource, size: Int) -> (CIImage, UIImage) {
+        switch source {
+        case .pattern:      return generatePatternImage(size: size)
+        case .gradient:     return generateGradientImage(size: size)
+        case .checkerboard: return generateCheckerboardImage(size: size)
+        case .userPhoto:    return generatePatternImage(size: size) // fallback
+        }
+    }
+
+    /// Colorful test pattern with shapes, lines, and dots.
+    private static func generatePatternImage(size: Int) -> (CIImage, UIImage) {
         let s = CGFloat(size)
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: s, height: s))
         let uiImage = renderer.image { ctx in
             let gc = ctx.cgContext
 
-            // Background gradient (deep blue to dark purple)
+            // Background gradient
             let bgColors = [
                 UIColor(red: 0.05, green: 0.05, blue: 0.2, alpha: 1).cgColor,
                 UIColor(red: 0.15, green: 0.0, blue: 0.2, alpha: 1).cgColor
@@ -629,12 +842,7 @@ struct ImageLabView: View {
                 colors: bgColors as CFArray,
                 locations: [0, 1]
             ) {
-                gc.drawLinearGradient(
-                    gradient,
-                    start: .zero,
-                    end: CGPoint(x: s, y: s),
-                    options: []
-                )
+                gc.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: s, y: s), options: [])
             }
 
             // Grid of colored squares
@@ -644,11 +852,7 @@ struct ImageLabView: View {
                 for col in 0..<gridCount {
                     let hue = CGFloat(row * gridCount + col) / CGFloat(gridCount * gridCount)
                     let brightness: CGFloat = ((row + col) % 2 == 0) ? 0.8 : 0.5
-                    let color = UIColor(
-                        hue: hue, saturation: 0.9,
-                        brightness: brightness, alpha: 0.6
-                    )
-                    gc.setFillColor(color.cgColor)
+                    gc.setFillColor(UIColor(hue: hue, saturation: 0.9, brightness: brightness, alpha: 0.6).cgColor)
                     gc.fill(CGRect(
                         x: CGFloat(col) * cellSize + 2,
                         y: CGFloat(row) * cellSize + 2,
@@ -658,27 +862,21 @@ struct ImageLabView: View {
                 }
             }
 
-            // Large overlapping circles (match theme neon colors)
+            // Overlapping circles
             let circles: [(CGRect, UIColor)] = [
-                (
-                    CGRect(x: s * 0.1, y: s * 0.1, width: s * 0.4, height: s * 0.4),
-                    UIColor(red: 0.0, green: 0.9, blue: 0.9, alpha: 0.5)
-                ),
-                (
-                    CGRect(x: s * 0.45, y: s * 0.35, width: s * 0.45, height: s * 0.45),
-                    UIColor(red: 0.9, green: 0.0, blue: 0.6, alpha: 0.5)
-                ),
-                (
-                    CGRect(x: s * 0.2, y: s * 0.55, width: s * 0.35, height: s * 0.35),
-                    UIColor(red: 0.0, green: 1.0, blue: 0.4, alpha: 0.4)
-                ),
+                (CGRect(x: s * 0.1, y: s * 0.1, width: s * 0.4, height: s * 0.4),
+                 UIColor(red: 0.0, green: 0.9, blue: 0.9, alpha: 0.5)),
+                (CGRect(x: s * 0.45, y: s * 0.35, width: s * 0.45, height: s * 0.45),
+                 UIColor(red: 0.9, green: 0.0, blue: 0.6, alpha: 0.5)),
+                (CGRect(x: s * 0.2, y: s * 0.55, width: s * 0.35, height: s * 0.35),
+                 UIColor(red: 0.0, green: 1.0, blue: 0.4, alpha: 0.4)),
             ]
             for (rect, color) in circles {
                 gc.setFillColor(color.cgColor)
                 gc.fillEllipse(in: rect)
             }
 
-            // Diagonal lines for edge-detection visibility
+            // Diagonal lines
             gc.setStrokeColor(UIColor.white.withAlphaComponent(0.7).cgColor)
             gc.setLineWidth(3)
             for i in stride(from: 0, to: Int(s), by: 40) {
@@ -687,17 +885,14 @@ struct ImageLabView: View {
                 gc.strokePath()
             }
 
-            // Small bright dots (visible under sharpen / blur)
-            let dotSeed: UInt64 = 42
-            var rng = SplitMix64(seed: dotSeed)
+            // Bright dots
+            var rng = SplitMix64(seed: 42)
             for _ in 0..<60 {
                 let x = CGFloat(rng.next() % UInt64(s - 40)) + 20
                 let y = CGFloat(rng.next() % UInt64(s - 40)) + 20
                 let dotSize = CGFloat(rng.next() % 6) + 3
                 let hue = CGFloat(rng.next() % 1000) / 1000.0
-                gc.setFillColor(
-                    UIColor(hue: hue, saturation: 1, brightness: 1, alpha: 0.9).cgColor
-                )
+                gc.setFillColor(UIColor(hue: hue, saturation: 1, brightness: 1, alpha: 0.9).cgColor)
                 gc.fillEllipse(in: CGRect(x: x, y: y, width: dotSize, height: dotSize))
             }
 
@@ -708,17 +903,15 @@ struct ImageLabView: View {
             let armLength: CGFloat = s * 0.15
             for i in 0..<12 {
                 let angle = Double(i) * (Double.pi / 6.0)
-                let dx = cos(angle) * Double(armLength)
-                let dy = sin(angle) * Double(armLength)
                 gc.move(to: center)
                 gc.addLine(to: CGPoint(
-                    x: center.x + CGFloat(dx),
-                    y: center.y + CGFloat(dy)
+                    x: center.x + CGFloat(cos(angle) * Double(armLength)),
+                    y: center.y + CGFloat(sin(angle) * Double(armLength))
                 ))
                 gc.strokePath()
             }
 
-            // Text label at top
+            // Label
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.alignment = .center
             let attrs: [NSAttributedString.Key: Any] = [
@@ -726,13 +919,148 @@ struct ImageLabView: View {
                 .foregroundColor: UIColor.white.withAlphaComponent(0.85),
                 .paragraphStyle: paragraphStyle
             ]
-            let text = "MatrixLab" as NSString
-            let textRect = CGRect(x: 0, y: s * 0.02, width: s, height: 30)
-            text.draw(in: textRect, withAttributes: attrs)
+            ("MatrixLab" as NSString).draw(
+                in: CGRect(x: 0, y: s * 0.02, width: s, height: 30),
+                withAttributes: attrs
+            )
         }
 
         let ciImage = CIImage(image: uiImage)!
         return (ciImage, uiImage)
+    }
+
+    /// Smooth radial gradient -- great for showing blur vs sharpen.
+    private static func generateGradientImage(size: Int) -> (CIImage, UIImage) {
+        let s = CGFloat(size)
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: s, height: s))
+        let uiImage = renderer.image { ctx in
+            let gc = ctx.cgContext
+            let center = CGPoint(x: s / 2, y: s / 2)
+
+            // Radial gradient background
+            let colors = [
+                UIColor(red: 0.0, green: 0.8, blue: 1.0, alpha: 1.0).cgColor,
+                UIColor(red: 0.6, green: 0.0, blue: 0.8, alpha: 1.0).cgColor,
+                UIColor(red: 0.1, green: 0.0, blue: 0.15, alpha: 1.0).cgColor
+            ]
+            if let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                colors: colors as CFArray,
+                locations: [0.0, 0.5, 1.0]
+            ) {
+                gc.drawRadialGradient(
+                    gradient,
+                    startCenter: center, startRadius: 0,
+                    endCenter: center, endRadius: s * 0.7,
+                    options: .drawsAfterEndLocation
+                )
+            }
+
+            // Concentric rings
+            gc.setStrokeColor(UIColor.white.withAlphaComponent(0.3).cgColor)
+            gc.setLineWidth(1.5)
+            for r in stride(from: 30, to: Int(s / 2), by: 30) {
+                let d = CGFloat(r) * 2
+                gc.strokeEllipse(in: CGRect(
+                    x: center.x - CGFloat(r), y: center.y - CGFloat(r),
+                    width: d, height: d
+                ))
+            }
+
+            // Cross-hairs
+            gc.setStrokeColor(UIColor.white.withAlphaComponent(0.4).cgColor)
+            gc.setLineWidth(1)
+            gc.move(to: CGPoint(x: s / 2, y: 0))
+            gc.addLine(to: CGPoint(x: s / 2, y: s))
+            gc.strokePath()
+            gc.move(to: CGPoint(x: 0, y: s / 2))
+            gc.addLine(to: CGPoint(x: s, y: s / 2))
+            gc.strokePath()
+        }
+
+        let ciImage = CIImage(image: uiImage)!
+        return (ciImage, uiImage)
+    }
+
+    /// High-contrast checkerboard -- ideal for edge detection kernels.
+    private static func generateCheckerboardImage(size: Int) -> (CIImage, UIImage) {
+        let s = CGFloat(size)
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: s, height: s))
+        let uiImage = renderer.image { ctx in
+            let gc = ctx.cgContext
+
+            // Dark background
+            gc.setFillColor(UIColor(red: 0.06, green: 0.06, blue: 0.12, alpha: 1).cgColor)
+            gc.fill(CGRect(x: 0, y: 0, width: s, height: s))
+
+            let tileCount = 8
+            let tileSize = s / CGFloat(tileCount)
+
+            // Checkerboard tiles with alternating neon colors
+            let colorA = UIColor(red: 0.0, green: 0.85, blue: 0.85, alpha: 0.8)  // cyan
+            let colorB = UIColor(red: 0.85, green: 0.0, blue: 0.55, alpha: 0.8)  // magenta
+
+            for row in 0..<tileCount {
+                for col in 0..<tileCount {
+                    if (row + col) % 2 == 0 {
+                        gc.setFillColor(colorA.cgColor)
+                    } else {
+                        gc.setFillColor(colorB.cgColor)
+                    }
+                    gc.fill(CGRect(
+                        x: CGFloat(col) * tileSize,
+                        y: CGFloat(row) * tileSize,
+                        width: tileSize,
+                        height: tileSize
+                    ))
+                }
+            }
+
+            // Central diamond overlay
+            gc.setFillColor(UIColor(red: 0.0, green: 1.0, blue: 0.4, alpha: 0.4).cgColor)
+            let mid = s / 2
+            let half = s * 0.25
+            gc.move(to: CGPoint(x: mid, y: mid - half))
+            gc.addLine(to: CGPoint(x: mid + half, y: mid))
+            gc.addLine(to: CGPoint(x: mid, y: mid + half))
+            gc.addLine(to: CGPoint(x: mid - half, y: mid))
+            gc.closePath()
+            gc.fillPath()
+
+            // Grid lines for tile boundaries
+            gc.setStrokeColor(UIColor.white.withAlphaComponent(0.15).cgColor)
+            gc.setLineWidth(1)
+            for i in 1..<tileCount {
+                let pos = CGFloat(i) * tileSize
+                gc.move(to: CGPoint(x: pos, y: 0))
+                gc.addLine(to: CGPoint(x: pos, y: s))
+                gc.strokePath()
+                gc.move(to: CGPoint(x: 0, y: pos))
+                gc.addLine(to: CGPoint(x: s, y: pos))
+                gc.strokePath()
+            }
+        }
+
+        let ciImage = CIImage(image: uiImage)!
+        return (ciImage, uiImage)
+    }
+
+    /// Resize a UIImage to a square by center-cropping, then scaling.
+    private static func resizeToSquare(_ image: UIImage, size: Int) -> UIImage {
+        let s = CGFloat(size)
+        let sourceSize = image.size
+        let minDim = min(sourceSize.width, sourceSize.height)
+        let cropRect = CGRect(
+            x: (sourceSize.width - minDim) / 2,
+            y: (sourceSize.height - minDim) / 2,
+            width: minDim,
+            height: minDim
+        )
+        guard let cgImage = image.cgImage?.cropping(to: cropRect) else { return image }
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: s, height: s))
+        return renderer.image { _ in
+            UIImage(cgImage: cgImage).draw(in: CGRect(x: 0, y: 0, width: s, height: s))
+        }
     }
 
     // MARK: - Helpers

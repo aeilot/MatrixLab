@@ -251,23 +251,23 @@ private extension GeometryLabView {
         label: String,
         onDrag: @escaping (CGPoint) -> Void
     ) -> some View {
-        GeometryReader { _ in
-            let screenCenter = center
-            let tipScreen = CGPoint(
-                x: screenCenter.x + basis.x * gridUnit,
-                y: screenCenter.y - basis.y * gridUnit
-            )
+        let tipScreen = CGPoint(
+            x: center.x + basis.x * gridUnit,
+            y: center.y - basis.y * gridUnit
+        )
+        let offset = labelOffset(from: center, to: tipScreen)
 
+        return ZStack {
             // Arrow line drawn via Canvas overlay
             Canvas { ctx, _ in
                 // Shaft
                 var shaft = Path()
-                shaft.move(to: screenCenter)
+                shaft.move(to: center)
                 shaft.addLine(to: tipScreen)
                 ctx.stroke(shaft, with: .color(color), style: StrokeStyle(lineWidth: 3, lineCap: .round))
 
                 // Arrowhead
-                drawArrowhead(context: &ctx, from: screenCenter, to: tipScreen, color: color)
+                drawArrowhead(context: &ctx, from: center, to: tipScreen, color: color)
             }
             .allowsHitTesting(false)
 
@@ -277,8 +277,8 @@ private extension GeometryLabView {
                 .foregroundColor(color)
                 .neonGlow(color, radius: 4)
                 .position(
-                    x: tipScreen.x + labelOffset(from: screenCenter, to: tipScreen).dx,
-                    y: tipScreen.y + labelOffset(from: screenCenter, to: tipScreen).dy
+                    x: tipScreen.x + offset.dx,
+                    y: tipScreen.y + offset.dy
                 )
                 .allowsHitTesting(false)
 
@@ -298,9 +298,9 @@ private extension GeometryLabView {
                 .neonGlow(color, radius: 6)
                 .position(tipScreen)
                 .gesture(
-                    DragGesture(minimumDistance: 0)
+                    DragGesture(minimumDistance: 0, coordinateSpace: .local)
                         .onChanged { value in
-                            let gridPt = screenToGrid(value.location, center: screenCenter)
+                            let gridPt = screenToGrid(value.location, center: center)
                             // Snap to nearest 0.1 for nice values
                             let snapped = CGPoint(
                                 x: (gridPt.x * 10).rounded() / 10,
