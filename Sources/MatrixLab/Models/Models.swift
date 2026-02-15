@@ -53,9 +53,9 @@ enum LabLevel: Int, CaseIterable, Identifiable, Hashable {
     var accentColor: Color {
         switch self {
         case .geometry: return MatrixTheme.level1Color
-        case .linearAlgebra: return MatrixTheme.level2Color   // temporary, will be remapped in Task 2
-        case .image: return MatrixTheme.level2Color            // temporary, will be level3Color after Task 2
-        case .performance: return MatrixTheme.level3Color      // temporary, will be level4Color after Task 2
+        case .linearAlgebra: return MatrixTheme.level2Color
+        case .image: return MatrixTheme.level3Color
+        case .performance: return MatrixTheme.level4Color
         }
     }
     

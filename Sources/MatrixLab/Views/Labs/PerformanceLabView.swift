@@ -143,7 +143,7 @@ struct PerformanceLabView: View {
                     pipelines all use tiling to keep data in fast memory. The same matrix math, \
                     restructured for locality, can run 10\u{00D7} faster.
                     """,
-                    accentColor: MatrixTheme.level3Color,
+                    accentColor: MatrixTheme.level4Color,
                     isPresented: $showInfo
                 )
                 .transition(.scale.combined(with: .opacity))
@@ -200,11 +200,11 @@ struct PerformanceLabView: View {
                 } label: {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                         .font(.title3)
-                        .foregroundColor(MatrixTheme.level3Color)
+                        .foregroundColor(MatrixTheme.level4Color)
                         .frame(width: 44, height: 36)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(MatrixTheme.level3Color.opacity(0.15))
+                                .fill(MatrixTheme.level4Color.opacity(0.15))
                         )
                 }
                 .accessibilityLabel(isPlaying ? "Pause animation" : "Play animation")
@@ -233,7 +233,7 @@ struct PerformanceLabView: View {
                 } label: {
                     Image(systemName: soundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
                         .font(.subheadline)
-                        .foregroundColor(soundEnabled ? MatrixTheme.level3Color : MatrixTheme.textMuted)
+                        .foregroundColor(soundEnabled ? MatrixTheme.level4Color : MatrixTheme.textMuted)
                 }
                 .accessibilityLabel(soundEnabled ? "Disable sound" : "Enable sound")
 
@@ -243,7 +243,7 @@ struct PerformanceLabView: View {
                         .font(MatrixTheme.captionFont(10))
                         .foregroundColor(MatrixTheme.textMuted)
                     Slider(value: $animationSpeed, in: 0.05...0.6)
-                        .tint(MatrixTheme.level3Color)
+                        .tint(MatrixTheme.level4Color)
                         .frame(width: 100)
                         .accessibilityLabel("Animation speed")
                         .onChange(of: animationSpeed) { _ in
@@ -255,7 +255,7 @@ struct PerformanceLabView: View {
                 }
             }
         }
-        .labCard(accent: MatrixTheme.level3Color)
+        .labCard(accent: MatrixTheme.level4Color)
         .padding(.horizontal)
     }
 
@@ -349,7 +349,7 @@ struct PerformanceLabView: View {
                 .font(MatrixTheme.captionFont(9))
                 .foregroundColor(MatrixTheme.textMuted)
         }
-        .labCard(accent: MatrixTheme.level3Color)
+        .labCard(accent: MatrixTheme.level4Color)
     }
 
     private func memoryCellView(
@@ -443,7 +443,7 @@ struct PerformanceLabView: View {
             .frame(width: 140, height: 100)
             .animation(.easeInOut(duration: 0.3), value: currentFPS)
         }
-        .labCard(accent: MatrixTheme.level3Color)
+        .labCard(accent: MatrixTheme.level4Color)
         .accessibilityLabel("Simulated frames per second")
         .accessibilityValue(String(format: "%.0f FPS", currentFPS))
     }
@@ -521,7 +521,7 @@ struct PerformanceLabView: View {
                     .contentTransition(.numericText())
             }
         }
-        .labCard(accent: MatrixTheme.level3Color)
+        .labCard(accent: MatrixTheme.level4Color)
         .accessibilityLabel("Cache hit rate")
         .accessibilityValue(String(format: "%.0f percent", hitRate))
     }
@@ -571,19 +571,19 @@ struct PerformanceLabView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "lightbulb.fill")
-                    .foregroundColor(MatrixTheme.level3Color)
+                    .foregroundColor(MatrixTheme.level4Color)
                 Text("Why does memory layout matter?")
                     .font(MatrixTheme.captionFont(13))
-                    .foregroundColor(MatrixTheme.level3Color)
+                    .foregroundColor(MatrixTheme.level4Color)
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 16)
             .background(
                 Capsule()
-                    .fill(MatrixTheme.level3Color.opacity(0.1))
+                    .fill(MatrixTheme.level4Color.opacity(0.1))
                     .overlay(
                         Capsule()
-                            .stroke(MatrixTheme.level3Color.opacity(0.3), lineWidth: 1)
+                            .stroke(MatrixTheme.level4Color.opacity(0.3), lineWidth: 1)
                     )
             )
         }
@@ -605,20 +605,20 @@ struct PerformanceLabView: View {
                 HStack(spacing: 8) {
                     if isBenchmarking {
                         ProgressView()
-                            .tint(MatrixTheme.level3Color)
+                            .tint(MatrixTheme.level4Color)
                     } else {
                         Image(systemName: "gauge.with.dots.needle.67percent")
-                            .foregroundColor(MatrixTheme.level3Color)
+                            .foregroundColor(MatrixTheme.level4Color)
                     }
                     Text(isBenchmarking ? "Running..." : "Run Benchmark")
                         .font(MatrixTheme.bodyFont(14))
-                        .foregroundColor(MatrixTheme.level3Color)
+                        .foregroundColor(MatrixTheme.level4Color)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(MatrixTheme.level3Color.opacity(0.15))
+                        .fill(MatrixTheme.level4Color.opacity(0.15))
                 )
             }
             .disabled(isBenchmarking)
@@ -667,7 +667,7 @@ struct PerformanceLabView: View {
                 .padding(.top, 4)
             }
         }
-        .labCard(accent: MatrixTheme.level3Color)
+        .labCard(accent: MatrixTheme.level4Color)
     }
 
     private func formatMs(_ ms: Double) -> String {

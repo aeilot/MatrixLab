@@ -28,7 +28,7 @@ struct ContentView: View {
                             case .geometry:
                                 GeometryLabView()
                             case .linearAlgebra:
-                                EmptyView() // placeholder until Task 3
+                                LinearAlgebraLabView()
                             case .image:
                                 ImageLabView()
                             case .performance:

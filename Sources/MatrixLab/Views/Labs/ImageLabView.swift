@@ -86,7 +86,7 @@ struct ImageLabView: View {
     // Persistence
     @AppStorage("lastPresetIndex") private var savedPresetIndex = 0
 
-    private let accent = MatrixTheme.level2Color
+    private let accent = MatrixTheme.level3Color
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
     private static let imageSize = 400

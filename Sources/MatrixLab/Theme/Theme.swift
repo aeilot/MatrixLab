@@ -23,9 +23,10 @@ enum MatrixTheme {
     static let gridLineAccent = Color(white: 0.25)
     
     // MARK: - Level Colors
-    static let level1Color = neonCyan
-    static let level2Color = neonMagenta
-    static let level3Color = neonGreen
+    static let level1Color = neonCyan       // Geometry
+    static let level2Color = neonBlue       // Linear Algebra (NEW)
+    static let level3Color = neonMagenta    // Image (was level2Color)
+    static let level4Color = neonGreen      // Performance (was level3Color)
     
     // MARK: - Fonts
     static func monoFont(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
