@@ -1,6 +1,6 @@
 # MatrixLab
 
-An interactive iPad app that teaches linear algebra through hands-on experimentation. Built for the Swift Student Challenge 2025.
+An interactive iPad app that teaches linear algebra through hands-on experimentation. Built for the Swift Student Challenge 2026.
 
 ## What It Does
 
@@ -71,4 +71,4 @@ Or open `Package.swift` in Swift Playgrounds / Xcode and run directly.
 
 ## License
 
-This project is submitted for the Apple Swift Student Challenge 2025.
+This project is submitted for the Apple Swift Student Challenge 2026.

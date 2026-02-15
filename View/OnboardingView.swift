@@ -308,7 +308,7 @@ struct OnboardingView: View {
                     
                     // Swipe hint
                     HStack(spacing: 6) {
-                        Text("Swipe to continue")
+                        Text("Try Long Pressing Numbers & Concepts in the Levels for new Discoveries!")
                             .font(MatrixTheme.captionFont(14))
                             .foregroundColor(MatrixTheme.textMuted)
                         Image(systemName: "chevron.right.2")
