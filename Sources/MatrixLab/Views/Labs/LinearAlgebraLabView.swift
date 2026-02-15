@@ -27,10 +27,7 @@ struct LinearAlgebraLabView: View {
             case .eigen:
                 EigenTab()
             case .jordan:
-                Text("Jordan \u{2014} Coming Soon")
-                    .font(MatrixTheme.titleFont(20))
-                    .foregroundColor(MatrixTheme.textPrimary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                JordanTab()
             case .similarity:
                 Text("Similarity \u{2014} Coming Soon")
                     .font(MatrixTheme.titleFont(20))
