@@ -31,23 +31,30 @@ MatrixLab turns abstract matrix concepts into tactile, visual experiences across
 ## Project Structure
 
 ```
-Sources/MatrixLab/
-  App/            MyApp.swift
-  Models/         Models.swift, Challenges.swift
-  Theme/          Theme.swift
-  Views/
-    ContentView.swift
-    HomeView.swift
-    OnboardingView.swift
-    AboutMeView.swift
-    Labs/
-      GeometryLabView.swift        — Level 1: 2D transform playground
-      LinearAlgebraLabView.swift   — Level 2: tab container
-      EigenTab.swift               — Eigenvector canvas + lambda slider
-      JordanTab.swift              — Step-by-step decomposition
-      SimilarityTab.swift          — Dual-canvas comparison
-      ImageLabView.swift           — Level 3: convolution workshop
-      PerformanceLabView.swift     — Level 4: cache performance lab
+MatrixLab.swiftpm/
+├── Package.swift
+├── README.md
+└── Sources/MatrixLab/
+    ├── App/
+    │   └── MyApp.swift              — App entry point
+    ├── Models/
+    │   ├── Models.swift             — Matrix2x2, LabLevel, ConvolutionKernel
+    │   └── Challenges.swift         — Challenge cards, discovery banners
+    ├── Theme/
+    │   └── Theme.swift              — MatrixTheme, colors, modifiers
+    └── Views/
+        ├── ContentView.swift        — Onboarding + navigation
+        ├── HomeView.swift           — Level selection screen
+        ├── OnboardingView.swift     — 3-page intro + matrix rain
+        ├── AboutMeView.swift        — Developer info
+        └── Labs/
+            ├── GeometryLabView.swift        — Level 1: 2D transform playground
+            ├── LinearAlgebraLabView.swift   — Level 2: tab container
+            ├── EigenTab.swift               — Eigenvector canvas + lambda slider
+            ├── JordanTab.swift              — Step-by-step decomposition
+            ├── SimilarityTab.swift          — Dual-canvas comparison
+            ├── ImageLabView.swift           — Level 3: convolution workshop
+            └── PerformanceLabView.swift     — Level 4: cache performance lab
 ```
 
 ## Building
