@@ -306,7 +306,7 @@ struct OnboardingView: View {
                     
                     Spacer().frame(height: 20)
                     
-                    // Swipe hint
+                    // Hints
                     HStack(spacing: 6) {
                         Text("Try Long Pressing Numbers & Concepts in the Levels for new Discoveries!")
                             .font(MatrixTheme.captionFont(14))

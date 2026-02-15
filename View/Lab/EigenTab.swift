@@ -8,12 +8,27 @@ struct EigenTab: View {
     @State private var activePreset: String?
     @State private var lastSnappedLambda: Double = .nan
 
+    // Interactive probe vector (in grid coordinates)
+    @State private var probeVector: CGPoint? = nil
+    @State private var isDraggingProbe: Bool = false
+
+    // Text input editing state
+    @FocusState private var focusedField: MatrixField?
+    @State private var editText00: String = "2"
+    @State private var editText01: String = "1"
+    @State private var editText10: String = "1"
+    @State private var editText11: String = "2"
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let accent = MatrixTheme.level2Color
     private let gridUnit: CGFloat = 80
     private let gridRange = -5...5
     private let vectorCount = 24
+
+    enum MatrixField: Hashable {
+        case m00, m01, m10, m11
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,7 +37,17 @@ struct EigenTab: View {
                 GeometryReader { geo in
                     let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
 
-                    eigenCanvas(size: geo.size, center: center)
+                    ZStack {
+                        eigenCanvas(size: geo.size, center: center)
+
+                        // Probe vector drag overlay
+                        probeDragOverlay(center: center)
+
+                        // Probe vector handle (if active)
+                        if let probe = probeVector {
+                            probeHandle(probe: probe, center: center)
+                        }
+                    }
                 }
 
                 // HUD: matrix editor + eigen info
@@ -61,7 +86,7 @@ private extension EigenTab {
             drawGrid(context: &context, center: center, size: size)
             drawVectorFan(context: &context, center: center)
             drawEigenvectors(context: &context, center: center)
-            drawLambdaComparison(context: &context, center: center)
+            drawProbeVector(context: &context, center: center)
             drawOrigin(context: &context, center: center)
         }
         .ignoresSafeArea()
@@ -69,9 +94,10 @@ private extension EigenTab {
         .id(canvasID)
     }
 
-    /// Force canvas redraw when matrix or lambda changes.
+    /// Force canvas redraw when matrix, lambda, or probe changes.
     var canvasID: String {
-        "\(matrix.m00)-\(matrix.m01)-\(matrix.m10)-\(matrix.m11)-\(lambda)"
+        let probeStr = probeVector.map { "\($0.x)-\($0.y)" } ?? "none"
+        return "\(matrix.m00)-\(matrix.m01)-\(matrix.m10)-\(matrix.m11)-\(lambda)-\(probeStr)"
     }
 
     // MARK: Grid
@@ -190,30 +216,98 @@ private extension EigenTab {
         }
     }
 
-    // MARK: Lambda Comparison
+    // MARK: Probe Vector Visualization
 
-    func drawLambdaComparison(context: inout GraphicsContext, center: CGPoint) {
-        // Show a specific test vector scaled by lambda vs Av
-        // Use the current slider lambda value
-        // Pick a canonical direction (1, 0) unless degenerate
-        let testDir = CGPoint(x: 1, y: 0)
-        let lambdaV = CGPoint(x: testDir.x * lambda, y: testDir.y * lambda)
-        let av = matrix.transform(testDir)
+    func drawProbeVector(context: inout GraphicsContext, center: CGPoint) {
+        guard let probe = probeVector else { return }
 
-        // lambda * v line (yellow dashed)
-        let lvScreen = toScreen(lambdaV, center: center)
-        var lvPath = Path()
-        lvPath.move(to: center)
-        lvPath.addLine(to: lvScreen)
-        context.stroke(lvPath, with: .color(Color.yellow.opacity(0.4)),
-                       style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
+        let v = probe
+        let av = matrix.transform(v)
+        let lambdaV = CGPoint(x: v.x * lambda, y: v.y * lambda)
 
-        // Av line (accent)
+        let vScreen = toScreen(v, center: center)
         let avScreen = toScreen(av, center: center)
+        let lvScreen = toScreen(lambdaV, center: center)
+
+        // v (original vector) — white
+        var vPath = Path()
+        vPath.move(to: center)
+        vPath.addLine(to: vScreen)
+        context.stroke(vPath, with: .color(Color.white.opacity(0.7)),
+                       style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+        drawArrowhead(context: &context, from: center, to: vScreen, color: Color.white.opacity(0.7))
+
+        // Label "v"
+        let vLabelPt = CGPoint(
+            x: vScreen.x + (vScreen.x - center.x > 0 ? 12 : -20),
+            y: vScreen.y + (vScreen.y - center.y > 0 ? 12 : -16)
+        )
+        context.draw(
+            Text("v")
+                .font(MatrixTheme.monoFont(14, weight: .bold))
+                .foregroundColor(.white),
+            at: vLabelPt
+        )
+
+        // Av (transformed vector) — accent color
         var avPath = Path()
         avPath.move(to: center)
         avPath.addLine(to: avScreen)
-        context.stroke(avPath, with: .color(accent.opacity(0.6)), lineWidth: 2)
+        context.stroke(avPath, with: .color(accent),
+                       style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+        drawArrowhead(context: &context, from: center, to: avScreen, color: accent)
+
+        // Label "Av"
+        let avLabelPt = CGPoint(
+            x: avScreen.x + (avScreen.x - center.x > 0 ? 12 : -28),
+            y: avScreen.y + (avScreen.y - center.y > 0 ? 12 : -16)
+        )
+        context.draw(
+            Text("Av")
+                .font(MatrixTheme.monoFont(14, weight: .bold))
+                .foregroundColor(accent),
+            at: avLabelPt
+        )
+
+        // lambda * v (scalar multiple) — yellow dashed
+        var lvPath = Path()
+        lvPath.move(to: center)
+        lvPath.addLine(to: lvScreen)
+        context.stroke(lvPath, with: .color(Color.yellow.opacity(0.6)),
+                       style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 4]))
+        drawArrowhead(context: &context, from: center, to: lvScreen, color: Color.yellow.opacity(0.6))
+
+        // Label "lambda*v"
+        let lvLabelPt = CGPoint(
+            x: lvScreen.x + (lvScreen.x - center.x > 0 ? 12 : -36),
+            y: lvScreen.y + (lvScreen.y - center.y > 0 ? 16 : -20)
+        )
+        context.draw(
+            Text("\u{03BB}v")
+                .font(MatrixTheme.monoFont(14, weight: .bold))
+                .foregroundColor(.yellow),
+            at: lvLabelPt
+        )
+
+        // Show alignment indicator: if Av is close to parallel with v, highlight
+        let vLen = sqrt(v.x * v.x + v.y * v.y)
+        let avLen = sqrt(av.x * av.x + av.y * av.y)
+        if vLen > 0.01 && avLen > 0.01 {
+            let dot = (v.x * av.x + v.y * av.y) / (vLen * avLen)
+            if abs(abs(dot) - 1.0) < 0.05 {
+                // Vectors are nearly parallel — this IS an eigenvector direction!
+                let midPt = CGPoint(
+                    x: (vScreen.x + center.x) / 2,
+                    y: (vScreen.y + center.y) / 2 - 20
+                )
+                context.draw(
+                    Text("Eigenvector!")
+                        .font(MatrixTheme.monoFont(13, weight: .bold))
+                        .foregroundColor(MatrixTheme.neonGreen),
+                    at: midPt
+                )
+            }
+        }
     }
 
     // MARK: Origin
@@ -255,6 +349,75 @@ private extension EigenTab {
         head.closeSubpath()
         context.fill(head, with: .color(color))
     }
+
+    // MARK: - Probe Interaction
+
+    func screenToGrid(_ screenPt: CGPoint, center: CGPoint) -> CGPoint {
+        CGPoint(
+            x: (screenPt.x - center.x) / gridUnit,
+            y: -(screenPt.y - center.y) / gridUnit  // flip Y
+        )
+    }
+
+    func probeDragOverlay(center: CGPoint) -> some View {
+        Color.clear
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                    .onChanged { value in
+                        let gridPt = screenToGrid(value.location, center: center)
+                        // Snap to nearest 0.1
+                        let snapped = CGPoint(
+                            x: (gridPt.x * 10).rounded() / 10,
+                            y: (gridPt.y * 10).rounded() / 10
+                        )
+                        if !isDraggingProbe {
+                            isDraggingProbe = true
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                        probeVector = snapped
+
+                        // Check if we're near an eigenvector direction — haptic
+                        if matrix.hasRealEigenvalues {
+                            let vLen = sqrt(snapped.x * snapped.x + snapped.y * snapped.y)
+                            if vLen > 0.1 {
+                                let ev = matrix.eigenvalues
+                                for eigLam in [ev.real1, ev.real2] {
+                                    if let eigVec = matrix.eigenvector(for: eigLam) {
+                                        let dot = abs(snapped.x * eigVec.x + snapped.y * eigVec.y) / vLen
+                                        if abs(dot - 1.0) < 0.03 {
+                                            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .onEnded { _ in
+                        isDraggingProbe = false
+                    }
+            )
+    }
+
+    func probeHandle(probe: CGPoint, center: CGPoint) -> some View {
+        let probeScreen = toScreen(probe, center: center)
+        return Circle()
+            .fill(Color.white.opacity(0.2))
+            .frame(width: 32, height: 32)
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.6), lineWidth: 1.5)
+            )
+            .overlay(
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 6, height: 6)
+            )
+            .position(probeScreen)
+            .allowsHitTesting(false)
+            .animation(isDraggingProbe ? nil : .easeOut(duration: 0.2), value: probe.x)
+            .animation(isDraggingProbe ? nil : .easeOut(duration: 0.2), value: probe.y)
+    }
 }
 
 // MARK: - HUD Overlay
@@ -275,15 +438,15 @@ private extension EigenTab {
                 .font(MatrixTheme.captionFont())
                 .foregroundColor(MatrixTheme.textSecondary)
 
-            // Editable 2x2 matrix
+            // Editable 2x2 matrix with text fields
             VStack(spacing: 4) {
                 HStack(spacing: 8) {
-                    matrixCell(value: matrix.m00) { matrix.m00 = $0 }
-                    matrixCell(value: matrix.m01) { matrix.m01 = $0 }
+                    matrixTextField(text: $editText00, field: .m00) { matrix.m00 = $0 }
+                    matrixTextField(text: $editText01, field: .m01) { matrix.m01 = $0 }
                 }
                 HStack(spacing: 8) {
-                    matrixCell(value: matrix.m10) { matrix.m10 = $0 }
-                    matrixCell(value: matrix.m11) { matrix.m11 = $0 }
+                    matrixTextField(text: $editText10, field: .m10) { matrix.m10 = $0 }
+                    matrixTextField(text: $editText11, field: .m11) { matrix.m11 = $0 }
                 }
             }
         }
@@ -291,25 +454,37 @@ private extension EigenTab {
         .frame(width: 180)
     }
 
-    func matrixCell(value: Double, onChange: @escaping (Double) -> Void) -> some View {
-        let text = formatNum(value)
-        return Text(text)
+    func matrixTextField(text: Binding<String>, field: MatrixField, onChange: @escaping (Double) -> Void) -> some View {
+        TextField("0", text: text)
             .font(MatrixTheme.monoFont(20, weight: .semibold))
             .foregroundColor(MatrixTheme.textPrimary)
+            .multilineTextAlignment(.center)
+            .keyboardType(.numbersAndPunctuation)
+            .focused($focusedField, equals: field)
             .frame(width: 60, height: 36)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(MatrixTheme.surfaceSecondary)
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(accent.opacity(0.3), lineWidth: 1)
+                            .stroke(focusedField == field ? accent : accent.opacity(0.3), lineWidth: focusedField == field ? 2 : 1)
                     )
             )
-            .onTapGesture {
-                promptForValue(current: value, onChange: onChange)
+            .onSubmit {
+                if let val = Double(text.wrappedValue) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        onChange(val)
+                    }
+                }
+                focusedField = nil
             }
-            .accessibilityLabel("Matrix entry \(text)")
-            .accessibilityHint("Tap to edit")
+            .onChange(of: text.wrappedValue) { newValue in
+                if let val = Double(newValue) {
+                    onChange(val)
+                }
+            }
+            .accessibilityLabel("Matrix entry \(text.wrappedValue)")
+            .accessibilityHint("Type a number to set this entry")
     }
 
     var eigenInfoCard: some View {
@@ -452,6 +627,13 @@ private extension EigenTab {
                 }
                 .accessibilityLabel("Lambda slider")
                 .accessibilityValue(formatNum(lambda))
+
+            if probeVector == nil {
+                Text("Drag anywhere on the grid to probe a vector")
+                    .font(MatrixTheme.captionFont(12))
+                    .foregroundColor(MatrixTheme.textMuted)
+                    .transition(.opacity)
+            }
         }
     }
 
@@ -459,30 +641,25 @@ private extension EigenTab {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 presetButton(name: "Scaling", icon: "arrow.up.left.and.arrow.down.right") {
-                    matrix.m00 = 2; matrix.m01 = 0
-                    matrix.m10 = 0; matrix.m11 = 0.5
+                    setMatrix(2, 0, 0, 0.5)
                 }
                 presetButton(name: "Rotation", icon: "arrow.triangle.2.circlepath") {
                     let angle = Double.pi / 4
-                    matrix.m00 = cos(angle); matrix.m01 = -sin(angle)
-                    matrix.m10 = sin(angle); matrix.m11 = cos(angle)
+                    setMatrix(cos(angle), -sin(angle), sin(angle), cos(angle))
                 }
                 presetButton(name: "Shear", icon: "rectangle.portrait.and.arrow.forward") {
-                    matrix.m00 = 1; matrix.m01 = 1
-                    matrix.m10 = 0; matrix.m11 = 1
+                    setMatrix(1, 1, 0, 1)
                 }
                 presetButton(name: "Projection", icon: "line.diagonal") {
-                    matrix.m00 = 1; matrix.m01 = 0
-                    matrix.m10 = 0; matrix.m11 = 0
+                    setMatrix(1, 0, 0, 0)
                 }
                 presetButton(name: "Reflection", icon: "arrow.left.and.right.righttriangle.left.righttriangle.right") {
-                    matrix.m00 = 0; matrix.m01 = 1
-                    matrix.m10 = 1; matrix.m11 = 0
+                    setMatrix(0, 1, 1, 0)
                 }
                 presetButton(name: "Reset", icon: "arrow.counterclockwise") {
-                    matrix.m00 = 2; matrix.m01 = 1
-                    matrix.m10 = 1; matrix.m11 = 2
+                    setMatrix(2, 1, 1, 2)
                     activePreset = nil
+                    probeVector = nil
                 }
             }
             .padding(.horizontal, 4)
@@ -552,24 +729,14 @@ private extension EigenTab {
         }
     }
 
-    func promptForValue(current: Double, onChange: @escaping (Double) -> Void) {
-        // Use a simple alert-based approach for value editing
-        // SwiftUI doesn't have a native number prompt, so we use a workaround:
-        // Cycle through common values on tap
-        let presets: [Double] = [-2, -1, -0.5, 0, 0.5, 1, 1.5, 2, 3]
-        if let idx = presets.firstIndex(where: { abs($0 - current) < 0.01 }) {
-            let next = presets[(idx + 1) % presets.count]
-            withAnimation(.easeInOut(duration: 0.2)) {
-                onChange(next)
-            }
-        } else {
-            // Snap to nearest preset
-            let nearest = presets.min(by: { abs($0 - current) < abs($1 - current) }) ?? 1
-            withAnimation(.easeInOut(duration: 0.2)) {
-                onChange(nearest)
-            }
-        }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    /// Helper to set all four matrix entries and sync text fields
+    func setMatrix(_ m00: Double, _ m01: Double, _ m10: Double, _ m11: Double) {
+        matrix.m00 = m00; matrix.m01 = m01
+        matrix.m10 = m10; matrix.m11 = m11
+        editText00 = formatNum(m00)
+        editText01 = formatNum(m01)
+        editText10 = formatNum(m10)
+        editText11 = formatNum(m11)
     }
 }
 

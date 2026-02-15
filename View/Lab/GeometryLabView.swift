@@ -54,7 +54,7 @@ struct GeometryLabView: View {
                         .position(center)
                         .allowsHitTesting(false)
                 }
-            }
+            }.ignoresSafeArea()
 
             // MARK: HUD Overlay
             VStack(spacing: 0) {
@@ -296,7 +296,23 @@ private extension GeometryLabView {
             x: center.x + basis.x * gridUnit,
             y: center.y - basis.y * gridUnit
         )
-        let offset = labelOffset(from: center, to: tipScreen)
+
+        // Offset the handle outward from the arrow tip along the vector direction
+        let handleGap: CGFloat = 30
+        let dx = tipScreen.x - center.x
+        let dy = tipScreen.y - center.y
+        let len = sqrt(dx * dx + dy * dy)
+        let handlePos: CGPoint
+        if len > 1 {
+            handlePos = CGPoint(
+                x: tipScreen.x + (dx / len) * handleGap,
+                y: tipScreen.y + (dy / len) * handleGap
+            )
+        } else {
+            handlePos = CGPoint(x: tipScreen.x + handleGap, y: tipScreen.y)
+        }
+
+        let offset = labelOffset(from: center, to: handlePos)
 
         return ZStack {
             // Arrow line drawn via Canvas overlay
@@ -318,12 +334,12 @@ private extension GeometryLabView {
                 .foregroundColor(color)
                 .neonGlow(color, radius: 4)
                 .position(
-                    x: tipScreen.x + offset.dx,
-                    y: tipScreen.y + offset.dy
+                    x: handlePos.x + offset.dx,
+                    y: handlePos.y + offset.dy
                 )
                 .allowsHitTesting(false)
 
-            // Draggable handle
+            // Draggable handle (offset from arrow tip)
             Circle()
                 .fill(color.opacity(0.3))
                 .frame(width: 44, height: 44)
@@ -337,7 +353,7 @@ private extension GeometryLabView {
                         .frame(width: 12, height: 12)
                 )
                 .neonGlow(color, radius: 6)
-                .position(tipScreen)
+                .position(handlePos)
                 .accessibilityLabel("Basis vector \(label)")
                 .accessibilityValue("(\(String(format: "%.1f", basis.x)), \(String(format: "%.1f", basis.y)))")
                 .accessibilityHint("Drag to change this basis vector")
