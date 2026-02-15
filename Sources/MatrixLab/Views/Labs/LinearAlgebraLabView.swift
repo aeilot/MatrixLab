@@ -29,10 +29,7 @@ struct LinearAlgebraLabView: View {
             case .jordan:
                 JordanTab()
             case .similarity:
-                Text("Similarity \u{2014} Coming Soon")
-                    .font(MatrixTheme.titleFont(20))
-                    .foregroundColor(MatrixTheme.textPrimary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                SimilarityTab()
             }
         }
         .background(MatrixTheme.background)
