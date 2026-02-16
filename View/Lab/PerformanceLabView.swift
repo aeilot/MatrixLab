@@ -823,16 +823,21 @@ struct PerformanceLabView: View {
                 // Wide: side by side
                 HStack(alignment: .top, spacing: 12) {
                     codeBlock(title: "Naive O(n\u{00B3})", lines: naiveCodeLines, highlightColor: MatrixTheme.neonOrange)
+                        .frame(maxWidth: .infinity)
                     codeBlock(title: "Blocked (Tiled)", lines: blockedCodeLines, highlightColor: MatrixTheme.neonGreen)
+                        .frame(maxWidth: .infinity)
                 }
 
                 // Narrow: stacked
                 VStack(spacing: 12) {
                     codeBlock(title: "Naive O(n\u{00B3})", lines: naiveCodeLines, highlightColor: MatrixTheme.neonOrange)
+                        .frame(maxWidth: .infinity)
                     codeBlock(title: "Blocked (Tiled)", lines: blockedCodeLines, highlightColor: MatrixTheme.neonGreen)
+                        .frame(maxWidth: .infinity)
                 }
             }
         }
+        .frame(maxWidth: .infinity)
         .labCard(accent: MatrixTheme.level4Color)
     }
 
@@ -850,7 +855,7 @@ struct PerformanceLabView: View {
                         Text(String(format: "%2d", idx + 1))
                             .font(.system(size: 10, weight: .regular, design: .monospaced))
                             .foregroundColor(MatrixTheme.textMuted.opacity(0.5))
-                            .frame(width: 14, alignment: .trailing)
+                            .frame(width: 30, alignment: .trailing)
 
                         syntaxHighlightedText(line)
                     }
@@ -864,6 +869,7 @@ struct PerformanceLabView: View {
                 }
             }
             .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(MatrixTheme.background)
