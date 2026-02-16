@@ -39,7 +39,8 @@ struct MatrixStepperField: View {
                 .multilineTextAlignment(.center)
                 .keyboardType(.numbersAndPunctuation)
                 .focused($isFocused)
-                .frame(width: 44, height: 36)
+                .frame(minWidth: 28, maxWidth: .infinity)
+                .frame(height: 36)
                 .onSubmit {
                     commitText()
                     isFocused = false

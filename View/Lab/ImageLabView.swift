@@ -375,17 +375,12 @@ struct ImageLabView: View {
 
     private var imageComparisonSection: some View {
         VStack(spacing: 12) {
-            // Toggle bar
-            HStack(spacing: 0) {
-                comparisonTab("Original", isSelected: showOriginal) {
-                    showOriginal = true
-                }
-                comparisonTab("Filtered", isSelected: !showOriginal) {
-                    showOriginal = false
-                }
+            // System segmented picker
+            Picker("View", selection: $showOriginal) {
+                Text("Original").tag(true)
+                Text("Filtered").tag(false)
             }
-            .background(MatrixTheme.surfaceSecondary)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .pickerStyle(.segmented)
             .padding(.horizontal, 40)
 
             // Image display
@@ -464,30 +459,6 @@ struct ImageLabView: View {
                 .background(Capsule().fill(accent.opacity(0.12)))
         }
         .labCard(accent: accent)
-    }
-
-    private func comparisonTab(
-        _ title: String,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            action()
-        } label: {
-            Text(title)
-                .font(MatrixTheme.captionFont(14))
-                .foregroundColor(isSelected ? MatrixTheme.textPrimary : MatrixTheme.textMuted)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(isSelected ? accent.opacity(0.2) : Color.clear)
-                )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     // MARK: - Preset Buttons

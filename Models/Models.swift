@@ -515,10 +515,10 @@ final class SymmetricMatrix3x3: ObservableObject {
 
     // MARK: - Presets
 
-    static let ellipsoid = SymmetricMatrix3x3(1, 0, 0, 2, 0, 3)
-    static let sphere = SymmetricMatrix3x3(1, 0, 0, 1, 0, 1)
-    static let hyperboloid1 = SymmetricMatrix3x3(1, 0, 0, 1, 0, -1)
-    static let hyperboloid2 = SymmetricMatrix3x3(1, 0, 0, -1, 0, -1)
-    static let cone = SymmetricMatrix3x3(1, 0, 0, 1, 0, 0)  // elliptic cylinder (for x^TAx=1)
-    static let indefinite = SymmetricMatrix3x3(1, 0, 0, -1, 0, 0)
+    @MainActor static let ellipsoid = SymmetricMatrix3x3(1, 0, 0, 2, 0, 3)
+    @MainActor static let sphere = SymmetricMatrix3x3(1, 0, 0, 1, 0, 1)
+    @MainActor static let hyperboloid1 = SymmetricMatrix3x3(1, 0, 0, 1, 0, -1)
+    @MainActor static let hyperboloid2 = SymmetricMatrix3x3(1, 0, 0, -1, 0, -1)
+    @MainActor static let cone = SymmetricMatrix3x3(1, 0, 0, 1, 0, 0)  // elliptic cylinder (for x^TAx=1)
+    @MainActor static let indefinite = SymmetricMatrix3x3(1, 0, 0, -1, 0, 0)
 }

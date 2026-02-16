@@ -849,18 +849,13 @@ struct PerformanceLabView: View {
     // MARK: - FPS Gauge
 
     private var fpsGauge: some View {
-        VStack(spacing: 8) {
-            Text("Simulated FPS")
-                .font(MatrixTheme.captionFont(13))
-                .foregroundColor(MatrixTheme.textSecondary)
-
+        VStack(spacing: 4) {
             ZStack {
                 // Background arc
                 Circle()
                     .trim(from: 0.25, to: 0.75)
                     .stroke(MatrixTheme.surfaceSecondary, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                     .frame(width: 120, height: 120)
-                    .rotationEffect(.degrees(0))
 
                 // Colored arc
                 Circle()
@@ -870,7 +865,6 @@ struct PerformanceLabView: View {
                         style: StrokeStyle(lineWidth: 10, lineCap: .round)
                     )
                     .frame(width: 120, height: 120)
-                    .rotationEffect(.degrees(0))
 
                 // Needle
                 needleView
@@ -888,8 +882,13 @@ struct PerformanceLabView: View {
                 }
                 .offset(y: 10)
             }
-            .frame(width: 140, height: 100)
+            .frame(width: 140, height: 120)
+            .clipped()
             .animation(.easeInOut(duration: 0.3), value: currentFPS)
+
+            Text("Simulated FPS")
+                .font(MatrixTheme.captionFont(13))
+                .foregroundColor(MatrixTheme.textSecondary)
         }
         .labCard(accent: MatrixTheme.level4Color)
         .accessibilityLabel("Simulated frames per second")
