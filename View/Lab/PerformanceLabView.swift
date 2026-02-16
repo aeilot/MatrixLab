@@ -79,6 +79,8 @@ private struct BenchmarkDisplayResult: Identifiable {
 // MARK: - Main View
 
 struct PerformanceLabView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     // Animation state
     @State private var isPlaying = false
     @State private var accessMode: AccessMode = .naive
@@ -128,32 +130,7 @@ struct PerformanceLabView: View {
     private let cellSize: CGFloat = 28
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: MatrixTheme.spacing) {
-                headerSection
-                controlPanel
-                gridsSection
-                memoryStripSection
-                    .padding(.horizontal)
-                cacheLineDetailCard
-                    .padding(.horizontal)
-                codeDisplaySection
-                    .padding(.horizontal)
-                HStack(alignment: .top, spacing: MatrixTheme.spacing) {
-                    fpsGauge
-                    statisticsPanel
-                }
-                .padding(.horizontal)
-                benchmarkSection
-                    .padding(.horizontal)
-                infoButton
-                ChallengesView(level: .performance)
-                    .padding(.horizontal)
-                DidYouKnowCard(level: .performance)
-                    .padding(.horizontal)
-            }
-            .padding(.vertical)
-        }
+        mainContent
         .background(MatrixTheme.background.ignoresSafeArea())
         .navigationTitle("Performance Engine")
         .navigationBarTitleDisplayMode(.inline)
@@ -200,6 +177,83 @@ struct PerformanceLabView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: showInfo)
         .tutorialOverlay(for: .performance)
+    }
+
+    // MARK: - Layout
+
+    @ViewBuilder
+    private var mainContent: some View {
+        if horizontalSizeClass == .regular {
+            regularLayout
+        } else {
+            compactLayout
+        }
+    }
+
+    private var compactLayout: some View {
+        ScrollView {
+            VStack(spacing: MatrixTheme.spacing) {
+                headerSection
+                controlPanel
+                gridsSection
+                    .padding(.horizontal)
+                memoryStripSection
+                    .padding(.horizontal)
+                cacheLineDetailCard
+                    .padding(.horizontal)
+                codeDisplaySection
+                    .padding(.horizontal)
+                HStack(alignment: .top, spacing: MatrixTheme.spacing) {
+                    fpsGauge
+                    statisticsPanel
+                }
+                .padding(.horizontal)
+                benchmarkSection
+                    .padding(.horizontal)
+                infoButton
+                ChallengesView(level: .performance)
+                    .padding(.horizontal)
+                DidYouKnowCard(level: .performance)
+                    .padding(.horizontal)
+            }
+            .padding(.vertical)
+        }
+    }
+
+    private var regularLayout: some View {
+        ScrollView {
+            VStack(spacing: MatrixTheme.spacing) {
+                headerSection
+
+                HStack(alignment: .top, spacing: MatrixTheme.spacing) {
+                    // Left column: controls, code, stats, benchmark
+                    VStack(spacing: MatrixTheme.spacing) {
+                        controlPanel
+                        codeDisplaySection
+                        HStack(alignment: .top, spacing: MatrixTheme.spacing) {
+                            fpsGauge
+                            statisticsPanel
+                        }
+                        benchmarkSection
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    // Right column: visualization
+                    VStack(spacing: MatrixTheme.spacing) {
+                        gridsSection
+                        memoryStripSection
+                        cacheLineDetailCard
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                infoButton
+                ChallengesView(level: .performance)
+                DidYouKnowCard(level: .performance)
+            }
+            .padding(.horizontal)
+            .padding(.vertical)
+        }
     }
 
     // MARK: - Header
@@ -316,25 +370,41 @@ struct PerformanceLabView: View {
 
                 Spacer()
 
-                // Sound toggle
-                Button {
-                    soundEnabled.toggle()
-                } label: {
-                    Image(systemName: soundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                        .font(.subheadline)
+                // Sound & Speed controls (dedicated row)
+                HStack(spacing: 12) {
+                    // Sound toggle - capsule button
+                    Button {
+                        soundEnabled.toggle()
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: soundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                                .font(.caption)
+                            Text(soundEnabled ? "Sound On" : "Sound Off")
+                                .font(MatrixTheme.captionFont(13))
+                        }
                         .foregroundColor(soundEnabled ? MatrixTheme.level4Color : MatrixTheme.textMuted)
-                }
-                .accessibilityLabel(soundEnabled ? "Disable sound" : "Enable sound")
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(soundEnabled ? MatrixTheme.level4Color.opacity(0.15) : MatrixTheme.surfaceSecondary)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(soundEnabled ? MatrixTheme.level4Color.opacity(0.4) : MatrixTheme.gridLine, lineWidth: 1)
+                                )
+                        )
+                    }
+                    .accessibilityLabel(soundEnabled ? "Disable sound" : "Enable sound")
 
-                if !stepMode {
-                    // Speed control (hidden in step mode)
-                    VStack(spacing: 2) {
+                    if !stepMode {
+                        // Speed control - full width
                         Text("Speed")
                             .font(MatrixTheme.captionFont(12))
                             .foregroundColor(MatrixTheme.textMuted)
+
                         Slider(value: $animationSpeed, in: 0.05...0.6)
                             .tint(MatrixTheme.level4Color)
-                            .frame(width: 100)
                             .accessibilityLabel("Animation speed")
                             .onChange(of: animationSpeed) { _ in
                                 if isPlaying {
@@ -369,7 +439,6 @@ struct PerformanceLabView: View {
                     isMatrixA: false
                 )
             }
-            .padding(.horizontal)
 
             // Narrow layout: stacked
             VStack(spacing: MatrixTheme.spacing) {
@@ -386,7 +455,6 @@ struct PerformanceLabView: View {
                     isMatrixA: false
                 )
             }
-            .padding(.horizontal)
         }
     }
 
