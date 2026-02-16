@@ -723,7 +723,7 @@ private extension SimilarityTab {
             Text(label)
                 .font(MatrixTheme.captionFont(14))
                 .foregroundColor(MatrixTheme.textSecondary)
-                .frame(width: 70, alignment: .leading)
+                .frame(width: 150, alignment: .leading)
 
             Text("A: \(valueA)")
                 .font(MatrixTheme.monoFont(14, weight: .medium))
@@ -754,7 +754,7 @@ private extension SimilarityTab {
             Text(label)
                 .font(MatrixTheme.captionFont(14))
                 .foregroundColor(MatrixTheme.textSecondary)
-                .frame(width: 70, alignment: .leading)
+                .frame(width: 150, alignment: .leading)
 
             Text(detail)
                 .font(MatrixTheme.monoFont(13, weight: .medium))
