@@ -24,9 +24,9 @@ struct AboutMeView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
+                        Image(systemName: "xmark")
                             .foregroundColor(MatrixTheme.textMuted)
-                            .font(.title3)
+                            .font(.system(size: 15, weight: .semibold))
                     }
                     .accessibilityLabel("Dismiss")
                 }

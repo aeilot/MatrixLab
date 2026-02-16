@@ -282,6 +282,20 @@ private extension SimilarityTab {
                             .padding(6)
                         }
                     }
+                    .overlay(alignment: .bottomLeading) {
+                        if mode == .congruence {
+                            Text(conicEquationString(mat))
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundColor(isLeft ? accent.opacity(0.9) : MatrixTheme.neonMagenta.opacity(0.9))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(MatrixTheme.surfacePrimary.opacity(0.85))
+                                )
+                                .padding(6)
+                        }
+                    }
                 } else {
                     ZStack {
                         MatrixTheme.background
@@ -893,6 +907,55 @@ private extension SimilarityTab {
             return String(format: "%.0f", value)
         }
         return String(format: "%.2f", value)
+    }
+
+    /// Build the equation string for x^T M x = 1 with a 2x2 matrix.
+    /// Produces e.g. "2x\u{00B2} + 2xy + 3y\u{00B2} = 1"
+    func conicEquationString(_ mat: Matrix2x2) -> String {
+        let a = mat.m00
+        let bPlusC = mat.m01 + mat.m10
+        let d = mat.m11
+
+        var terms: [String] = []
+
+        // x\u{00B2} term
+        if abs(a) > 1e-8 {
+            let coeff = formatCoeff(a, isFirst: terms.isEmpty)
+            terms.append("\(coeff)x\u{00B2}")
+        }
+        // xy term
+        if abs(bPlusC) > 1e-8 {
+            let coeff = formatCoeff(bPlusC, isFirst: terms.isEmpty)
+            terms.append("\(coeff)xy")
+        }
+        // y\u{00B2} term
+        if abs(d) > 1e-8 {
+            let coeff = formatCoeff(d, isFirst: terms.isEmpty)
+            terms.append("\(coeff)y\u{00B2}")
+        }
+
+        if terms.isEmpty {
+            return "0 = 1"
+        }
+        return terms.joined() + " = 1"
+    }
+
+    /// Format a coefficient for display in an equation.
+    func formatCoeff(_ value: Double, isFirst: Bool) -> String {
+        let absVal = abs(value)
+        let sign = value < 0 ? "\u{2212}" : (isFirst ? "" : "+")
+        let numStr: String
+        if abs(absVal - 1) < 1e-8 {
+            numStr = ""
+        } else if abs(absVal - absVal.rounded()) < 0.001 {
+            numStr = String(format: "%.0f", absVal)
+        } else {
+            numStr = String(format: "%.2g", absVal)
+        }
+        if isFirst {
+            return value < 0 ? "\(sign)\(numStr)" : "\(numStr)"
+        }
+        return " \(sign) \(numStr)"
     }
 }
 

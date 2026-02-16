@@ -8,6 +8,13 @@ import SceneKit
 struct QuadricSurfaceView: UIViewRepresentable {
     @ObservedObject var matrix: SymmetricMatrix3x3
     var accentColor: Color
+    @Binding var resetCamera: Bool
+
+    private static let defaultCameraPosition = SCNVector3(3, 2.5, 4)
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
     func makeUIView(context: Context) -> SCNView {
         let scnView = SCNView()
@@ -16,11 +23,26 @@ struct QuadricSurfaceView: UIViewRepresentable {
         scnView.autoenablesDefaultLighting = false
         scnView.antialiasingMode = .multisampling4X
         scnView.scene = buildScene()
+        context.coordinator.scnView = scnView
         return scnView
     }
 
     func updateUIView(_ scnView: SCNView, context: Context) {
         scnView.scene = buildScene()
+
+        if resetCamera {
+            // Reset to the default camera from the new scene
+            if let cameraNode = scnView.scene?.rootNode.childNodes.first(where: { $0.camera != nil }) {
+                scnView.pointOfView = cameraNode
+            }
+            DispatchQueue.main.async {
+                resetCamera = false
+            }
+        }
+    }
+
+    class Coordinator {
+        weak var scnView: SCNView?
     }
 
     // MARK: - Scene Construction

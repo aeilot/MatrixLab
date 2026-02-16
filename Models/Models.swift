@@ -434,7 +434,7 @@ final class SymmetricMatrix3x3: ObservableObject {
 
         // Trigonometric solution
         let sqrtNegA3 = sqrt(-A / 3.0)
-        var cosArg = -B / (2.0 * sqrtNegA3 * sqrtNegA3 * sqrtNegA3)
+        var cosArg = B / (2.0 * sqrtNegA3 * sqrtNegA3 * sqrtNegA3)
         cosArg = max(-1.0, min(1.0, cosArg))  // clamp for numerical safety
         let theta = acos(cosArg) / 3.0
 

@@ -7,6 +7,7 @@ struct QuadricTab: View {
     @StateObject private var matrix = SymmetricMatrix3x3(1, 0, 0, 2, 0, 3)
     @State private var showKnowledgeHint = true
     @State private var activePreset: String? = "Ellipsoid"
+    @State private var resetCamera = false
 
     private let accent = MatrixTheme.level2Color
 
@@ -114,13 +115,34 @@ private extension QuadricTab {
                     .foregroundColor(MatrixTheme.textMuted)
             }
 
-            QuadricSurfaceView(matrix: matrix, accentColor: accent)
+            QuadricSurfaceView(matrix: matrix, accentColor: accent, resetCamera: $resetCamera)
                 .frame(height: 300)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(accent.opacity(0.2), lineWidth: 1)
                 )
+                .overlay(alignment: .topLeading) {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        resetCamera = true
+                    } label: {
+                        Image(systemName: "scope")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(accent)
+                            .frame(width: 32, height: 32)
+                            .background(
+                                Circle()
+                                    .fill(MatrixTheme.surfacePrimary.opacity(0.9))
+                                    .overlay(
+                                        Circle()
+                                            .stroke(accent.opacity(0.4), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .padding(8)
+                    .accessibilityLabel("Reset camera")
+                }
                 .overlay(alignment: .topTrailing) {
                     let classification = matrix.quadricClassification
                     HStack(spacing: 4) {
@@ -141,6 +163,18 @@ private extension QuadricTab {
                             )
                     )
                     .padding(8)
+                }
+                .overlay(alignment: .bottomLeading) {
+                    Text(quadricEquationString)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(accent.opacity(0.9))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(MatrixTheme.surfacePrimary.opacity(0.85))
+                        )
+                        .padding(8)
                 }
         }
         .labCard(accent: accent)
@@ -241,6 +275,18 @@ private extension QuadricTab {
                 .font(MatrixTheme.bodyFont(14))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // Quadric equation
+            Text(quadricEquationString)
+                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .foregroundColor(accent)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(accent.opacity(0.08))
+                )
 
             Divider().background(MatrixTheme.textMuted.opacity(0.2))
 
@@ -423,5 +469,45 @@ private extension QuadricTab {
             return String(format: "%.0f", value)
         }
         return String(format: "%.2f", value)
+    }
+
+    /// Build equation string for x^T A x = 1 with a 3x3 symmetric matrix.
+    /// Produces e.g. "x\u{2081}\u{00B2} + 2x\u{2082}\u{00B2} + 3x\u{2083}\u{00B2} = 1"
+    var quadricEquationString: String {
+        // x^T A x = a*x1^2 + 2b*x1*x2 + 2c*x1*x3 + d*x2^2 + 2e*x2*x3 + f*x3^2
+        let terms: [(Double, String)] = [
+            (matrix.a, "x\u{2081}\u{00B2}"),
+            (2 * matrix.b, "x\u{2081}x\u{2082}"),
+            (2 * matrix.c, "x\u{2081}x\u{2083}"),
+            (matrix.d, "x\u{2082}\u{00B2}"),
+            (2 * matrix.e, "x\u{2082}x\u{2083}"),
+            (matrix.f, "x\u{2083}\u{00B2}"),
+        ]
+
+        var parts: [String] = []
+        for (coeff, variable) in terms {
+            guard abs(coeff) > 1e-8 else { continue }
+            let isFirst = parts.isEmpty
+            let absVal = abs(coeff)
+            let sign = coeff < 0 ? "\u{2212}" : (isFirst ? "" : "+")
+            let numStr: String
+            if abs(absVal - 1) < 1e-8 {
+                numStr = ""
+            } else if abs(absVal - absVal.rounded()) < 0.001 {
+                numStr = String(format: "%.0f", absVal)
+            } else {
+                numStr = String(format: "%.2g", absVal)
+            }
+            if isFirst {
+                parts.append(coeff < 0 ? "\(sign)\(numStr)\(variable)" : "\(numStr)\(variable)")
+            } else {
+                parts.append(" \(sign) \(numStr)\(variable)")
+            }
+        }
+
+        if parts.isEmpty {
+            return "0 = 1"
+        }
+        return parts.joined() + " = 1"
     }
 }

@@ -870,7 +870,7 @@ struct PerformanceLabView: View {
                 needleView
                     .frame(width: 120, height: 120)
 
-                // FPS value
+                // FPS value (after needle in ZStack so it renders on top)
                 VStack(spacing: 2) {
                     Text("\(Int(currentFPS))")
                         .font(MatrixTheme.monoFont(28, weight: .bold))
@@ -880,7 +880,7 @@ struct PerformanceLabView: View {
                         .font(MatrixTheme.captionFont(12))
                         .foregroundColor(MatrixTheme.textMuted)
                 }
-                .offset(y: 10)
+                .offset(y: 25)
             }
             .frame(width: 140, height: 120)
             .clipped()
@@ -911,7 +911,7 @@ struct PerformanceLabView: View {
     private var needleView: some View {
         GeometryReader { geo in
             let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-            let needleLength: CGFloat = 45
+            let needleLength: CGFloat = 38
             // Map FPS 0-60 to angle 90°-270° (bottom half-circle, left-to-right)
             let angle = Angle.degrees(90 + (currentFPS / 60.0) * 180)
             let endPoint = CGPoint(
