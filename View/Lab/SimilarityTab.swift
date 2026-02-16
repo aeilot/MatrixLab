@@ -12,17 +12,62 @@ struct SimilarityTab: View {
     @StateObject private var matrixP = Matrix2x2(1, 1, 0, 1)
     @State private var mode: SimilarityMode = .similarity
     @State private var activePreset: String? = "Symmetric"
+    @State private var showKnowledgeHint = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let accent = MatrixTheme.level2Color
-    private let gridUnit: CGFloat = 60
     private let gridRange = -4...4
+
+    /// Dynamically compute grid unit to fit content within the canvas.
+    /// Returns a gridUnit that ensures all transformed points fit with some padding.
+    private func adaptiveGridUnit(for matrix: Matrix2x2, canvasSize: CGSize) -> CGFloat {
+        let baseUnit: CGFloat = 60
+        let minUnit: CGFloat = 20
+        let padding: CGFloat = 20 // screen-point padding from edges
+
+        if mode == .similarity {
+            // Check transformed unit square corners
+            let corners: [CGPoint] = [
+                CGPoint(x: 0, y: 0), CGPoint(x: 1, y: 0),
+                CGPoint(x: 1, y: 1), CGPoint(x: 0, y: 1)
+            ]
+            let transformed = corners.map { matrix.transform($0) }
+            let maxX = transformed.map { abs($0.x) }.max() ?? 1
+            let maxY = transformed.map { abs($0.y) }.max() ?? 1
+
+            let availW = (canvasSize.width / 2) - padding
+            let availH = (canvasSize.height / 2) - padding
+            guard maxX > 0 && maxY > 0 else { return baseUnit }
+            let fitX = availW / maxX
+            let fitY = availH / maxY
+            return max(min(min(fitX, fitY), baseUnit), minUnit)
+        } else {
+            // Congruence: conic r = 1/sqrt(qf). Max r when qf is smallest positive.
+            var maxR: CGFloat = 1
+            let steps = 72
+            for i in 0..<steps {
+                let theta = Double(i) * (2 * .pi / Double(steps))
+                let cosT = cos(theta)
+                let sinT = sin(theta)
+                let qf = matrix.m00 * cosT * cosT + (matrix.m01 + matrix.m10) * cosT * sinT + matrix.m11 * sinT * sinT
+                if qf > 1e-10 {
+                    let r = CGFloat(1.0 / sqrt(qf))
+                    maxR = max(maxR, r)
+                }
+            }
+            let availW = (canvasSize.width / 2) - padding
+            let availH = (canvasSize.height / 2) - padding
+            let fitUnit = min(availW, availH) / maxR
+            return max(min(fitUnit, baseUnit), minUnit)
+        }
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
                 modePicker
+                knowledgeHintCard
                 dualCanvasSection
                 matrixEditorSection
                 invariantSpotlight
@@ -58,6 +103,108 @@ private extension SimilarityTab {
         }
         .pickerStyle(.segmented)
         .accessibilityLabel("Transform mode")
+    }
+}
+
+// MARK: - Knowledge Hint Card
+
+private extension SimilarityTab {
+    var knowledgeHintCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    showKnowledgeHint.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundColor(MatrixTheme.neonYellow)
+                        .font(.caption)
+                    Text("What is this?")
+                        .font(MatrixTheme.captionFont(14))
+                        .foregroundColor(MatrixTheme.textPrimary)
+                    Spacer()
+                    Image(systemName: showKnowledgeHint ? "chevron.up" : "chevron.down")
+                        .font(.caption2)
+                        .foregroundColor(MatrixTheme.textMuted)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if showKnowledgeHint {
+                if mode == .similarity {
+                    similarityKnowledge
+                } else {
+                    congruenceKnowledge
+                }
+            }
+        }
+        .labCard(accent: MatrixTheme.neonYellow)
+        .animation(.easeInOut(duration: 0.25), value: mode)
+    }
+
+    var similarityKnowledge: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            knowledgeBullet(
+                title: "Similarity Transform",
+                detail: "B = P\u{207B}\u{00B9}AP means A and B represent the same linear map in different bases. P is the change-of-basis matrix."
+            )
+            knowledgeBullet(
+                title: "Geometric Meaning",
+                detail: "The two canvases show how the same transformation looks in the original basis (A) vs. a rotated/skewed basis (B). The shape changes, but the underlying action is identical."
+            )
+            knowledgeBullet(
+                title: "What's Preserved?",
+                detail: "Eigenvalues, trace, determinant, and characteristic polynomial stay the same. These are intrinsic properties of the transformation, independent of basis choice."
+            )
+            knowledgeBullet(
+                title: "Try This",
+                detail: "Set A to a rotation matrix and change P — notice the eigenvalues never change, even though the matrix entries do."
+            )
+        }
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    var congruenceKnowledge: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            knowledgeBullet(
+                title: "Congruence Transform",
+                detail: "B = P\u{1D40}AP preserves the quadratic form x\u{1D40}Ax = 1. This describes conic sections (ellipses, hyperbolas) in 2D."
+            )
+            knowledgeBullet(
+                title: "Geometric Meaning",
+                detail: "Both canvases draw the curve x\u{1D40}Mx = 1. Congruence changes coordinates but preserves the type of conic — an ellipse stays an ellipse."
+            )
+            knowledgeBullet(
+                title: "What's Preserved?",
+                detail: "The signature (number of positive/negative eigenvalues) and rank are preserved. These determine the conic type. Individual eigenvalues and determinant can change."
+            )
+            knowledgeBullet(
+                title: "Sylvester's Law of Inertia",
+                detail: "Any real symmetric matrix can be congruent-transformed to a diagonal matrix with only +1, -1, and 0 on the diagonal. The counts of each are the signature."
+            )
+        }
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    func knowledgeBullet(title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Circle()
+                .fill(MatrixTheme.neonYellow.opacity(0.6))
+                .frame(width: 5, height: 5)
+                .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(MatrixTheme.captionFont(13))
+                    .foregroundColor(MatrixTheme.textPrimary)
+                    .fontWeight(.semibold)
+                Text(detail)
+                    .font(MatrixTheme.captionFont(12))
+                    .foregroundColor(MatrixTheme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 
@@ -101,16 +248,40 @@ private extension SimilarityTab {
                 let center = CGPoint(x: size.width / 2, y: size.height / 2)
 
                 if let mat = matrix {
+                    let gu = adaptiveGridUnit(for: mat, canvasSize: size)
                     Canvas { context, _ in
-                        drawGrid(context: &context, center: center, size: size)
+                        drawGrid(context: &context, center: center, size: size, gridUnit: gu)
                         if mode == .similarity {
-                            drawTransformedSquare(context: &context, center: center, matrix: mat, isLeft: isLeft)
+                            drawTransformedSquare(context: &context, center: center, matrix: mat, isLeft: isLeft, gridUnit: gu)
                         } else {
-                            drawConic(context: &context, center: center, matrix: mat, isLeft: isLeft)
+                            drawConic(context: &context, center: center, matrix: mat, isLeft: isLeft, gridUnit: gu)
                         }
                         drawOrigin(context: &context, center: center)
                     }
                     .id(fullCanvasID(label: label))
+                    .overlay(alignment: .topTrailing) {
+                        if mode == .congruence {
+                            let classification = classifyConic(mat)
+                            HStack(spacing: 3) {
+                                Image(systemName: classification.icon)
+                                    .font(.system(size: 9, weight: .bold))
+                                Text(classification.name)
+                                    .font(MatrixTheme.captionFont(11))
+                            }
+                            .foregroundColor(isLeft ? accent : MatrixTheme.neonMagenta)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(
+                                Capsule()
+                                    .fill(MatrixTheme.surfacePrimary.opacity(0.85))
+                                    .overlay(
+                                        Capsule()
+                                            .stroke((isLeft ? accent : MatrixTheme.neonMagenta).opacity(0.5), lineWidth: 0.5)
+                                    )
+                            )
+                            .padding(6)
+                        }
+                    }
                 } else {
                     ZStack {
                         MatrixTheme.background
@@ -125,7 +296,7 @@ private extension SimilarityTab {
                     }
                 }
             }
-            .frame(height: 180)
+            .frame(height: 240)
             .background(MatrixTheme.background)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(
@@ -169,7 +340,7 @@ private extension SimilarityTab {
 // MARK: - Canvas Drawing Helpers
 
 private extension SimilarityTab {
-    func drawGrid(context: inout GraphicsContext, center: CGPoint, size: CGSize) {
+    func drawGrid(context: inout GraphicsContext, center: CGPoint, size: CGSize, gridUnit: CGFloat) {
         for i in gridRange {
             let gi = CGFloat(i)
             // Vertical
@@ -203,7 +374,7 @@ private extension SimilarityTab {
 
     // MARK: Similarity mode: transformed unit square
 
-    func drawTransformedSquare(context: inout GraphicsContext, center: CGPoint, matrix mat: Matrix2x2, isLeft: Bool) {
+    func drawTransformedSquare(context: inout GraphicsContext, center: CGPoint, matrix mat: Matrix2x2, isLeft: Bool, gridUnit: CGFloat) {
         // Unit square corners
         let corners: [CGPoint] = [
             CGPoint(x: 0, y: 0),
@@ -215,7 +386,7 @@ private extension SimilarityTab {
         // Draw original unit square (dim)
         var origPath = Path()
         for (i, corner) in corners.enumerated() {
-            let pt = toScreen(corner, center: center)
+            let pt = toScreen(corner, center: center, gridUnit: gridUnit)
             if i == 0 { origPath.move(to: pt) }
             else { origPath.addLine(to: pt) }
         }
@@ -226,7 +397,7 @@ private extension SimilarityTab {
         let transformed = corners.map { mat.transform($0) }
         var transPath = Path()
         for (i, pt) in transformed.enumerated() {
-            let screenPt = toScreen(pt, center: center)
+            let screenPt = toScreen(pt, center: center, gridUnit: gridUnit)
             if i == 0 { transPath.move(to: screenPt) }
             else { transPath.addLine(to: screenPt) }
         }
@@ -240,15 +411,15 @@ private extension SimilarityTab {
         let e1 = mat.transform(CGPoint(x: 1, y: 0))
         let e2 = mat.transform(CGPoint(x: 0, y: 1))
 
-        drawArrow(context: &context, from: center, to: toScreen(e1, center: center),
+        drawArrow(context: &context, from: center, to: toScreen(e1, center: center, gridUnit: gridUnit),
                   color: MatrixTheme.neonGreen.opacity(0.8), lineWidth: 2)
-        drawArrow(context: &context, from: center, to: toScreen(e2, center: center),
+        drawArrow(context: &context, from: center, to: toScreen(e2, center: center, gridUnit: gridUnit),
                   color: MatrixTheme.neonOrange.opacity(0.8), lineWidth: 2)
     }
 
     // MARK: Congruence mode: conic x^T A x = 1
 
-    func drawConic(context: inout GraphicsContext, center: CGPoint, matrix mat: Matrix2x2, isLeft: Bool) {
+    func drawConic(context: inout GraphicsContext, center: CGPoint, matrix mat: Matrix2x2, isLeft: Bool, gridUnit: CGFloat) {
         let steps = 360
         var conicPath = Path()
         var started = false
@@ -269,7 +440,7 @@ private extension SimilarityTab {
             let r = 1.0 / sqrt(qf)
             let x = r * cosT
             let y = r * sinT
-            let screenPt = toScreen(CGPoint(x: x, y: y), center: center)
+            let screenPt = toScreen(CGPoint(x: x, y: y), center: center, gridUnit: gridUnit)
 
             if !started {
                 conicPath.move(to: screenPt)
@@ -285,13 +456,13 @@ private extension SimilarityTab {
 
         // Draw axes for reference
         let axisLen: CGFloat = 2.5
-        let rightPt = toScreen(CGPoint(x: axisLen, y: 0), center: center)
-        let topPt = toScreen(CGPoint(x: 0, y: axisLen), center: center)
+        let rightPt = toScreen(CGPoint(x: axisLen, y: 0), center: center, gridUnit: gridUnit)
+        let topPt = toScreen(CGPoint(x: 0, y: axisLen), center: center, gridUnit: gridUnit)
         var xAxis = Path()
-        xAxis.move(to: toScreen(CGPoint(x: -axisLen, y: 0), center: center))
+        xAxis.move(to: toScreen(CGPoint(x: -axisLen, y: 0), center: center, gridUnit: gridUnit))
         xAxis.addLine(to: rightPt)
         var yAxis = Path()
-        yAxis.move(to: toScreen(CGPoint(x: 0, y: -axisLen), center: center))
+        yAxis.move(to: toScreen(CGPoint(x: 0, y: -axisLen), center: center, gridUnit: gridUnit))
         yAxis.addLine(to: topPt)
         context.stroke(xAxis, with: .color(Color.white.opacity(0.1)), lineWidth: 0.5)
         context.stroke(yAxis, with: .color(Color.white.opacity(0.1)), lineWidth: 0.5)
@@ -326,7 +497,7 @@ private extension SimilarityTab {
         context.fill(head, with: .color(color))
     }
 
-    func toScreen(_ pt: CGPoint, center: CGPoint) -> CGPoint {
+    func toScreen(_ pt: CGPoint, center: CGPoint, gridUnit: CGFloat) -> CGPoint {
         CGPoint(
             x: center.x + pt.x * gridUnit,
             y: center.y - pt.y * gridUnit  // flip Y
@@ -339,29 +510,17 @@ private extension SimilarityTab {
 private extension SimilarityTab {
     var matrixEditorSection: some View {
         HStack(spacing: 12) {
-            matrixEditor(label: "A (source)", matrix: matrixA, color: accent)
-            matrixEditor(label: "P (\(mode == .similarity ? "change-of-basis" : "congruence"))", matrix: matrixP, color: MatrixTheme.neonGreen)
-        }
-    }
+            MatrixEditorGrid(
+                matrix: matrixA,
+                accent: accent,
+                label: "A (source)"
+            )
 
-    func matrixEditor(label: String, matrix: Matrix2x2, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                .font(MatrixTheme.captionFont(13))
-                .foregroundColor(MatrixTheme.textSecondary)
-
-            VStack(spacing: 4) {
-                HStack(spacing: 6) {
-                    matrixCell(value: matrix.m00, color: color) { matrix.m00 = $0 }
-                    matrixCell(value: matrix.m01, color: color) { matrix.m01 = $0 }
-                }
-                HStack(spacing: 6) {
-                    matrixCell(value: matrix.m10, color: color) { matrix.m10 = $0 }
-                    matrixCell(value: matrix.m11, color: color) { matrix.m11 = $0 }
-                }
-            }
-
-            if matrix === matrixP {
+            MatrixEditorGrid(
+                matrix: matrixP,
+                accent: MatrixTheme.neonGreen,
+                label: "P (\(mode == .similarity ? "change-of-basis" : "congruence"))"
+            ) {
                 Text("det(P) = \(formatNum(matrixP.determinant))")
                     .font(MatrixTheme.captionFont(12))
                     .foregroundColor(
@@ -371,70 +530,6 @@ private extension SimilarityTab {
                     )
             }
         }
-        .labCard(accent: color)
-    }
-
-    func matrixCell(value: Double, color: Color, onChange: @escaping (Double) -> Void) -> some View {
-        HStack(spacing: 2) {
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    onChange(value - 0.5)
-                }
-            } label: {
-                Image(systemName: "minus")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(MatrixTheme.textMuted)
-                    .frame(width: 22, height: 32)
-            }
-
-            Text(formatNum(value))
-                .font(MatrixTheme.monoFont(17, weight: .semibold))
-                .foregroundColor(MatrixTheme.textPrimary)
-                .frame(width: 36, height: 32)
-                .onTapGesture {
-                    cycleValue(current: value, onChange: onChange)
-                }
-
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    onChange(value + 0.5)
-                }
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(MatrixTheme.textMuted)
-                    .frame(width: 22, height: 32)
-            }
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(MatrixTheme.surfaceSecondary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(color.opacity(0.3), lineWidth: 1)
-                )
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Matrix entry \(formatNum(value))")
-        .accessibilityHint("Tap to cycle, or use buttons to adjust by 0.5")
-    }
-
-    func cycleValue(current: Double, onChange: @escaping (Double) -> Void) {
-        let presets: [Double] = [-3, -2, -1, -0.5, 0, 0.5, 1, 1.5, 2, 3]
-        if let idx = presets.firstIndex(where: { abs($0 - current) < 0.01 }) {
-            let next = presets[(idx + 1) % presets.count]
-            withAnimation(.easeInOut(duration: 0.15)) {
-                onChange(next)
-            }
-        } else {
-            let nearest = presets.min(by: { abs($0 - current) < abs($1 - current) }) ?? 1
-            withAnimation(.easeInOut(duration: 0.15)) {
-                onChange(nearest)
-            }
-        }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 }
 
@@ -747,6 +842,46 @@ private extension SimilarityTab {
         matrixA.m00 = m00; matrixA.m01 = m01
         matrixA.m10 = m10; matrixA.m11 = m11
         activePreset = name
+    }
+}
+
+// MARK: - Conic Classification
+
+private extension SimilarityTab {
+    /// Classify the conic section defined by x^T A x = 1.
+    /// Uses the symmetrized matrix (A + A^T)/2 eigenvalues.
+    func classifyConic(_ mat: Matrix2x2) -> (name: String, icon: String) {
+        // Symmetrize: (A + A^T) / 2
+        let a = mat.m00
+        let d = mat.m11
+        let b = (mat.m01 + mat.m10) / 2
+
+        // Eigenvalues of symmetric 2x2: [a b; b d]
+        let tr = a + d
+        let det = a * d - b * b
+        let disc = tr * tr - 4 * det
+        let sqrtDisc = disc >= 0 ? sqrt(disc) : 0.0
+        let lambda1 = (tr + sqrtDisc) / 2
+        let lambda2 = (tr - sqrtDisc) / 2
+
+        let eps = 1e-8
+
+        if abs(lambda1) < eps && abs(lambda2) < eps {
+            return ("Degenerate", "xmark.circle")
+        } else if abs(lambda1) < eps || abs(lambda2) < eps {
+            // One eigenvalue zero — degenerate (parallel lines or empty)
+            return ("Degenerate", "line.horizontal.3")
+        } else if lambda1 > eps && lambda2 > eps {
+            if abs(lambda1 - lambda2) < eps * max(abs(lambda1), 1) {
+                return ("Circle", "circle")
+            }
+            return ("Ellipse", "oval")
+        } else if lambda1 < -eps && lambda2 < -eps {
+            return ("Empty Set", "nosign")
+        } else {
+            // Mixed signs
+            return ("Hyperbola", "arrow.up.left.and.arrow.down.right")
+        }
     }
 }
 

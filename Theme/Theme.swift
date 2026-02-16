@@ -13,6 +13,7 @@ enum MatrixTheme {
     static let neonMagenta = Color(red: 0.9, green: 0.0, blue: 0.6)
     static let neonGreen = Color(red: 0.0, green: 1.0, blue: 0.4)
     static let neonOrange = Color(red: 1.0, green: 0.5, blue: 0.0)
+    static let neonYellow = Color(red: 1.0, green: 0.85, blue: 0.0)
     static let neonBlue = Color(red: 0.2, green: 0.4, blue: 1.0)
     static let neonPurple = Color(red: 0.8, green: 0.2, blue: 1.0)
     
