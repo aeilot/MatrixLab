@@ -4,6 +4,7 @@ enum LinearAlgebraTab: String, CaseIterable {
     case eigen = "Eigen"
     case jordan = "Jordan"
     case similarity = "Similarity"
+    case quadric = "Quadric"
 }
 
 struct LinearAlgebraLabView: View {
@@ -30,6 +31,8 @@ struct LinearAlgebraLabView: View {
                 JordanTab()
             case .similarity:
                 SimilarityTab()
+            case .quadric:
+                QuadricTab()
             }
 
             // Challenges & Did You Know

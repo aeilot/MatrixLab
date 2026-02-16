@@ -25,13 +25,13 @@ enum TutorialContent {
             return [
                 TutorialStep(id: 0, title: "Edit the Matrix", message: "Tap matrix cells to cycle through values. The eigenvectors and eigenvalues update instantly.", icon: "hand.tap"),
                 TutorialStep(id: 1, title: "Lambda Slider", message: "Drag the λ slider to explore scaling. When λ matches an eigenvalue, the vector fan aligns.", icon: "slider.horizontal.below.rectangle"),
-                TutorialStep(id: 2, title: "Three Tabs", message: "Explore Eigen, Jordan, and Similarity tabs. Each reveals a different perspective on the same matrix.", icon: "rectangle.split.3x1"),
+                TutorialStep(id: 2, title: "Four Tabs", message: "Explore Eigen, Jordan, Similarity, and Quadric tabs. Each reveals a different perspective on matrix structure.", icon: "rectangle.split.3x1"),
                 TutorialStep(id: 3, title: "Try the Presets", message: "Use preset buttons to see interesting matrix types: symmetric, defective, rotation, and more.", icon: "list.bullet"),
             ]
         case .image:
             return [
                 TutorialStep(id: 0, title: "Pick a Kernel", message: "Tap a preset kernel like Edge Detection or Gaussian Blur. The image updates instantly.", icon: "square.grid.3x3"),
-                TutorialStep(id: 1, title: "Edit Values", message: "Tap any cell in the kernel grid to type custom values. The kernel name changes to 'Custom'.", icon: "pencil"),
+                TutorialStep(id: 1, title: "Edit Values", message: "Type or use the \u{00B1} buttons to edit kernel values. The kernel name changes to 'Custom'.", icon: "pencil"),
                 TutorialStep(id: 2, title: "Compare Results", message: "Tap 'Original' to toggle between the filtered and unfiltered image. See the difference!", icon: "photo.on.rectangle"),
                 TutorialStep(id: 3, title: "Step-by-Step", message: "Tap the animation button to see exactly how convolution slides across the image pixel by pixel.", icon: "play.rectangle"),
             ]

@@ -351,3 +351,174 @@ struct ConvolutionKernel {
         identity, edgeDetection, sharpen, gaussianBlur, emboss, sobelX, sobelY
     ]
 }
+
+// MARK: - 3x3 Symmetric Matrix Model
+
+/// A 3x3 symmetric matrix for quadric surface visualization.
+/// Only stores 6 independent entries (upper triangle).
+/// Layout: [[a, b, c], [b, d, e], [c, e, f]]
+final class SymmetricMatrix3x3: ObservableObject {
+    @Published var a: Double  // (0,0)
+    @Published var b: Double  // (0,1) = (1,0)
+    @Published var c: Double  // (0,2) = (2,0)
+    @Published var d: Double  // (1,1)
+    @Published var e: Double  // (1,2) = (2,1)
+    @Published var f: Double  // (2,2)
+
+    init(_ a: Double = 1, _ b: Double = 0, _ c: Double = 0,
+         _ d: Double = 1, _ e: Double = 0, _ f: Double = 1) {
+        self.a = a; self.b = b; self.c = c
+        self.d = d; self.e = e; self.f = f
+    }
+
+    /// Full 3x3 matrix as row-major array of arrays.
+    var values: [[Double]] {
+        [[a, b, c],
+         [b, d, e],
+         [c, e, f]]
+    }
+
+    /// Entry at (row, col).
+    func entry(_ row: Int, _ col: Int) -> Double {
+        let v = values
+        return v[row][col]
+    }
+
+    /// Trace: a + d + f.
+    var trace: Double { a + d + f }
+
+    /// Determinant using cofactor expansion along first row.
+    var determinant: Double {
+        a * (d * f - e * e) - b * (b * f - e * c) + c * (b * e - d * c)
+    }
+
+    /// Eigenvalues of a 3x3 symmetric matrix (always real).
+    /// Uses the analytical solution for the characteristic polynomial.
+    var eigenvalues: (Double, Double, Double) {
+        // Characteristic polynomial: -λ³ + pλ² + qλ + r = 0
+        // where p = tr(A), q, r from the matrix.
+        // Equivalently: λ³ - p·λ² + q·λ - r = 0
+        let p = trace
+        // q = sum of 2x2 minors on diagonal
+        let q = (a * d - b * b) + (a * f - c * c) + (d * f - e * e)
+        let r = determinant
+
+        // Substitution λ = t + p/3 reduces to depressed cubic t³ + pt' + q' = 0
+        let p3 = p / 3.0
+        let pp = q - p * p / 3.0       // coefficient of t in depressed cubic
+        let qq = r - p * q / 3.0 + 2.0 * p * p * p / 27.0  // constant term (negated from standard)
+        // Actually: depressed cubic is t³ + pp·t - qq = 0
+        // Wait, let me redo carefully. We have:
+        // λ³ - p·λ² + q·λ - r = 0
+        // Substitute λ = t + p/3:
+        // (t + p/3)³ - p(t + p/3)² + q(t + p/3) - r = 0
+        // t³ + (q - p²/3)t + (2p³/27 - pq/3 + r) = 0
+        // So: t³ + At + B = 0 where:
+        let A = q - p * p / 3.0
+        let B = 2.0 * p * p * p / 27.0 - p * q / 3.0 + r
+
+        // For symmetric matrices, eigenvalues are always real.
+        // Use trigonometric method (Viète's solution).
+        if abs(A) < 1e-14 {
+            // A ≈ 0: t³ + B = 0 → t = -cbrt(B)
+            let t = -cbrt(B)
+            return (t + p3, t + p3, t + p3)
+        }
+
+        let disc = -(4.0 * A * A * A + 27.0 * B * B)
+        if disc < -1e-10 {
+            // Should not happen for symmetric matrices, but handle gracefully
+            let t = -cbrt(B)
+            return (t + p3, t + p3, t + p3)
+        }
+
+        // Trigonometric solution
+        let sqrtNegA3 = sqrt(-A / 3.0)
+        var cosArg = -B / (2.0 * sqrtNegA3 * sqrtNegA3 * sqrtNegA3)
+        cosArg = max(-1.0, min(1.0, cosArg))  // clamp for numerical safety
+        let theta = acos(cosArg) / 3.0
+
+        let lambda1 = 2.0 * sqrtNegA3 * cos(theta) + p3
+        let lambda2 = 2.0 * sqrtNegA3 * cos(theta - 2.0 * .pi / 3.0) + p3
+        let lambda3 = 2.0 * sqrtNegA3 * cos(theta - 4.0 * .pi / 3.0) + p3
+
+        // Sort descending
+        var evs = [lambda1, lambda2, lambda3]
+        evs.sort(by: >)
+        return (evs[0], evs[1], evs[2])
+    }
+
+    /// Signature: (positive, negative, zero) counts of eigenvalues.
+    var signature: (pos: Int, neg: Int, zero: Int) {
+        let (l1, l2, l3) = eigenvalues
+        let eps = 1e-8
+        var p = 0, n = 0, z = 0
+        for l in [l1, l2, l3] {
+            if l > eps { p += 1 }
+            else if l < -eps { n += 1 }
+            else { z += 1 }
+        }
+        return (p, n, z)
+    }
+
+    /// Rank of the matrix.
+    var rank: Int {
+        let sig = signature
+        return sig.pos + sig.neg
+    }
+
+    /// Classify the quadric surface x^T A x = 1.
+    var quadricClassification: (name: String, icon: String, description: String) {
+        let sig = signature
+
+        switch (sig.pos, sig.neg, sig.zero) {
+        case (3, 0, 0):
+            // All positive — ellipsoid (sphere if all equal)
+            let (l1, l2, l3) = eigenvalues
+            let eps = 1e-6
+            if abs(l1 - l2) < eps && abs(l2 - l3) < eps {
+                return ("Sphere", "circle", "All eigenvalues equal: the quadric is a sphere")
+            }
+            return ("Ellipsoid", "oval", "All eigenvalues positive: a closed surface")
+        case (0, 3, 0):
+            // All negative — empty set for x^TAx = 1
+            return ("Empty Set", "nosign", "All eigenvalues negative: no real solution to x\u{1D40}Ax = 1")
+        case (2, 1, 0):
+            return ("Hyperboloid (1 sheet)", "arrow.up.left.and.arrow.down.right",
+                    "Signature (+,+,−): a connected surface with saddle shape")
+        case (1, 2, 0):
+            return ("Hyperboloid (2 sheets)", "arrow.up.left.and.arrow.down.right",
+                    "Signature (+,−,−): two separate surface components")
+        case (2, 0, 1):
+            return ("Elliptic Cylinder", "cylinder", "One zero eigenvalue: extends infinitely along one axis")
+        case (0, 2, 1):
+            return ("Empty (Imag. Cylinder)", "nosign", "Negative eigenvalues with a zero: no real solution")
+        case (1, 1, 1):
+            return ("Hyperbolic Cylinder", "rectangle.split.3x1",
+                    "Mixed signs with a zero: saddle-shaped cylinder")
+        case (1, 0, 2):
+            return ("Pair of Planes", "square.split.2x1", "Rank 1: two parallel planes")
+        case (0, 1, 2):
+            return ("Empty (Imag. Planes)", "nosign", "Negative eigenvalue, rank 1: no real solution")
+        case (0, 0, 3):
+            return ("Degenerate", "xmark.circle", "Zero matrix: any point satisfies 0 = 1 (empty)")
+        default:
+            return ("Unknown", "questionmark.circle", "")
+        }
+    }
+
+    /// Reset to identity.
+    func reset() {
+        a = 1; b = 0; c = 0
+        d = 1; e = 0; f = 1
+    }
+
+    // MARK: - Presets
+
+    static let ellipsoid = SymmetricMatrix3x3(1, 0, 0, 2, 0, 3)
+    static let sphere = SymmetricMatrix3x3(1, 0, 0, 1, 0, 1)
+    static let hyperboloid1 = SymmetricMatrix3x3(1, 0, 0, 1, 0, -1)
+    static let hyperboloid2 = SymmetricMatrix3x3(1, 0, 0, -1, 0, -1)
+    static let cone = SymmetricMatrix3x3(1, 0, 0, 1, 0, 0)  // elliptic cylinder (for x^TAx=1)
+    static let indefinite = SymmetricMatrix3x3(1, 0, 0, -1, 0, 0)
+}
