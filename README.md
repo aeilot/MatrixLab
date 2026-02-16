@@ -28,47 +28,6 @@ MatrixLab turns abstract matrix concepts into tactile, visual experiences across
 - **CoreImage** for real-time convolution filtering
 - No external dependencies
 
-## Project Structure
-
-```
-MatrixLab.swiftpm/
-├── Package.swift
-├── README.md
-├── App/
-│   └── MyApp.swift              — App entry point
-├── Models/
-│   ├── Models.swift             — Matrix2x2, LabLevel, ConvolutionKernel
-│   └── Challenges.swift         — Challenge cards, discovery banners
-├── Theme/
-│   └── Theme.swift              — MatrixTheme, colors, modifiers
-└── Views/
-    ├── ContentView.swift        — Onboarding + navigation
-    ├── HomeView.swift           — Level selection screen
-    ├── OnboardingView.swift     — 3-page intro + matrix rain
-    ├── AboutMeView.swift        — Developer info
-    └── Labs/
-        ├── GeometryLabView.swift        — Level 1: 2D transform playground
-        ├── LinearAlgebraLabView.swift   — Level 2: tab container
-        ├── EigenTab.swift               — Eigenvector canvas + lambda slider
-        ├── JordanTab.swift              — Step-by-step decomposition
-        ├── SimilarityTab.swift          — Dual-canvas comparison
-        ├── ImageLabView.swift           — Level 3: convolution workshop
-        └── PerformanceLabView.swift     — Level 4: cache performance lab
-```
-
-## Building
-
-Requires Xcode 16+ with iOS 16 SDK.
-
-```bash
-# If xcode-select points elsewhere, prefix with DEVELOPER_DIR:
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild build -scheme MatrixLab \
-  -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)'
-```
-
-Or open `Package.swift` in Swift Playgrounds / Xcode and run directly.
-
 ## License
 
 This project is submitted for the Apple Swift Student Challenge 2026.
