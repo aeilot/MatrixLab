@@ -78,25 +78,21 @@ private extension JordanTab {
         VStack(alignment: .leading, spacing: 12) {
             stepHeader(number: 1, title: "Matrix Input", icon: "square.grid.2x2")
 
-            Text("Choose a 2\u{00D7}2 matrix to decompose. Tap a cell to cycle through values, or pick a preset below.")
+            Text("Choose a 2\u{00D7}2 matrix to decompose. Edit the matrix entries, or pick a preset below.")
                 .font(MatrixTheme.bodyFont(16))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             // Editable 2x2 matrix
-            HStack {
-                Spacer()
-                VStack(spacing: 4) {
-                    HStack(spacing: 8) {
-                        matrixCell(value: matrix.m00) { matrix.m00 = $0 }
-                        matrixCell(value: matrix.m01) { matrix.m01 = $0 }
-                    }
-                    HStack(spacing: 8) {
-                        matrixCell(value: matrix.m10) { matrix.m10 = $0 }
-                        matrixCell(value: matrix.m11) { matrix.m11 = $0 }
-                    }
+            VStack(spacing: 4) {
+                HStack(spacing: 8) {
+                    MatrixStepperField(value: $matrix.m00, accentColor: accent) { _ in resetSteps() }
+                    MatrixStepperField(value: $matrix.m01, accentColor: accent) { _ in resetSteps() }
                 }
-                Spacer()
+                HStack(spacing: 8) {
+                    MatrixStepperField(value: $matrix.m10, accentColor: accent) { _ in resetSteps() }
+                    MatrixStepperField(value: $matrix.m11, accentColor: accent) { _ in resetSteps() }
+                }
             }
 
             // Presets
@@ -105,44 +101,6 @@ private extension JordanTab {
         .labCard(accent: accent)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Step 1: Matrix Input")
-    }
-
-    func matrixCell(value: Double, onChange: @escaping (Double) -> Void) -> some View {
-        let text = formatNum(value)
-        return Text(text)
-            .font(MatrixTheme.monoFont(22, weight: .semibold))
-            .foregroundColor(MatrixTheme.textPrimary)
-            .frame(width: 64, height: 40)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(MatrixTheme.surfaceSecondary)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(accent.opacity(0.3), lineWidth: 1)
-                    )
-            )
-            .onTapGesture {
-                cycleValue(current: value, onChange: onChange)
-            }
-            .accessibilityLabel("Matrix entry \(text)")
-            .accessibilityHint("Tap to cycle through values")
-    }
-
-    func cycleValue(current: Double, onChange: @escaping (Double) -> Void) {
-        let presets: [Double] = [-3, -2, -1, -0.5, 0, 0.5, 1, 1.5, 2, 3]
-        if let idx = presets.firstIndex(where: { abs($0 - current) < 0.01 }) {
-            let next = presets[(idx + 1) % presets.count]
-            withAnimation(.easeInOut(duration: 0.2)) {
-                onChange(next)
-            }
-        } else {
-            let nearest = presets.min(by: { abs($0 - current) < abs($1 - current) }) ?? 1
-            withAnimation(.easeInOut(duration: 0.2)) {
-                onChange(nearest)
-            }
-        }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        resetSteps()
     }
 
     var presetRow: some View {

@@ -9,15 +9,8 @@ struct EigenTab: View {
     @State private var lastSnappedLambda: Double = .nan
 
     // Interactive probe vector (in grid coordinates)
-    @State private var probeVector: CGPoint? = nil
+    @State private var probeVector: CGPoint? = Self.randomNonEigenvector(matrix: Matrix2x2(2, 1, 1, 2))
     @State private var isDraggingProbe: Bool = false
-
-    // Text input editing state
-    @FocusState private var focusedField: MatrixField?
-    @State private var editText00: String = "2"
-    @State private var editText01: String = "1"
-    @State private var editText10: String = "1"
-    @State private var editText11: String = "2"
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -25,10 +18,6 @@ struct EigenTab: View {
     private let gridUnit: CGFloat = 80
     private let gridRange = -5...5
     private let vectorCount = 24
-
-    enum MatrixField: Hashable {
-        case m00, m01, m10, m11
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -433,107 +422,12 @@ private extension EigenTab {
     }
 
     var matrixHUD: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Matrix A")
-                .font(MatrixTheme.captionFont())
-                .foregroundColor(MatrixTheme.textSecondary)
-
-            // Editable 2x2 matrix with text fields + steppers
-            VStack(spacing: 4) {
-                HStack(spacing: 8) {
-                    matrixStepperField(text: $editText00, field: .m00) { matrix.m00 = $0 }
-                    matrixStepperField(text: $editText01, field: .m01) { matrix.m01 = $0 }
-                }
-                HStack(spacing: 8) {
-                    matrixStepperField(text: $editText10, field: .m10) { matrix.m10 = $0 }
-                    matrixStepperField(text: $editText11, field: .m11) { matrix.m11 = $0 }
-                }
-            }
-        }
-        .labCard(accent: accent)
-        .frame(width: 220)
-    }
-
-    func matrixStepperField(text: Binding<String>, field: MatrixField, onChange: @escaping (Double) -> Void) -> some View {
-        HStack(spacing: 2) {
-            // Decrement button
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                let current = Double(text.wrappedValue) ?? 0
-                let newVal = current - 0.5
-                text.wrappedValue = formatStepperValue(newVal)
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    onChange(newVal)
-                }
-            } label: {
-                Image(systemName: "minus")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(accent)
-                    .frame(width: 20, height: 36)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Decrease value")
-
-            // Text field
-            TextField("0", text: text)
-                .font(MatrixTheme.monoFont(18, weight: .semibold))
-                .foregroundColor(MatrixTheme.textPrimary)
-                .multilineTextAlignment(.center)
-                .keyboardType(.numbersAndPunctuation)
-                .focused($focusedField, equals: field)
-                .frame(width: 44, height: 36)
-                .onSubmit {
-                    if let val = Double(text.wrappedValue) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            onChange(val)
-                        }
-                    }
-                    focusedField = nil
-                }
-                .onChange(of: text.wrappedValue) { newValue in
-                    if let val = Double(newValue) {
-                        onChange(val)
-                    }
-                }
-
-            // Increment button
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                let current = Double(text.wrappedValue) ?? 0
-                let newVal = current + 0.5
-                text.wrappedValue = formatStepperValue(newVal)
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    onChange(newVal)
-                }
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(accent)
-                    .frame(width: 20, height: 36)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Increase value")
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(MatrixTheme.surfaceSecondary)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(focusedField == field ? accent : accent.opacity(0.3), lineWidth: focusedField == field ? 2 : 1)
-                )
+        MatrixEditorGrid(
+            matrix: matrix,
+            accent: accent,
+            label: "Matrix A"
         )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Matrix entry \(text.wrappedValue)")
-        .accessibilityHint("Type a number or use stepper buttons to adjust by 0.5")
-    }
-
-    private func formatStepperValue(_ value: Double) -> String {
-        if value == value.rounded() {
-            return String(Int(value))
-        }
-        return String(format: "%.1f", value)
+        .frame(width: 220)
     }
 
     var eigenInfoCard: some View {
@@ -676,13 +570,6 @@ private extension EigenTab {
                 }
                 .accessibilityLabel("Lambda slider")
                 .accessibilityValue(formatNum(lambda))
-
-            if probeVector == nil {
-                Text("Drag anywhere on the grid to probe a vector")
-                    .font(MatrixTheme.captionFont(12))
-                    .foregroundColor(MatrixTheme.textMuted)
-                    .transition(.opacity)
-            }
         }
     }
 
@@ -708,7 +595,7 @@ private extension EigenTab {
                 presetButton(name: "Reset", icon: "arrow.counterclockwise") {
                     setMatrix(2, 1, 1, 2)
                     activePreset = nil
-                    probeVector = nil
+                    probeVector = Self.randomNonEigenvector(matrix: Matrix2x2(2, 1, 1, 2))
                 }
             }
             .padding(.horizontal, 4)
@@ -778,14 +665,47 @@ private extension EigenTab {
         }
     }
 
-    /// Helper to set all four matrix entries and sync text fields
+    /// Helper to set all four matrix entries
     func setMatrix(_ m00: Double, _ m01: Double, _ m10: Double, _ m11: Double) {
         matrix.m00 = m00; matrix.m01 = m01
         matrix.m10 = m10; matrix.m11 = m11
-        editText00 = formatNum(m00)
-        editText01 = formatNum(m01)
-        editText10 = formatNum(m10)
-        editText11 = formatNum(m11)
+    }
+}
+
+// MARK: - Random Probe Vector
+
+private extension EigenTab {
+    /// Generate a random probe vector that avoids eigenvector directions.
+    static func randomNonEigenvector(matrix: Matrix2x2) -> CGPoint {
+        let radius = 2.0 // grid units from origin
+        for _ in 0..<20 {
+            let angle = Double.random(in: 0..<(2 * .pi))
+            let candidate = CGPoint(x: radius * cos(angle), y: radius * sin(angle))
+            let len = sqrt(candidate.x * candidate.x + candidate.y * candidate.y)
+            guard len > 0.01 else { continue }
+            let nx = candidate.x / len
+            let ny = candidate.y / len
+
+            var tooClose = false
+            if matrix.hasRealEigenvalues {
+                let ev = matrix.eigenvalues
+                for eigenLambda in [ev.real1, ev.real2] {
+                    if let eigVec = matrix.eigenvector(for: eigenLambda) {
+                        let dot = abs(nx * eigVec.x + ny * eigVec.y)
+                        if dot > 0.95 { tooClose = true; break }
+                    }
+                }
+            }
+            if !tooClose {
+                // Snap to nearest 0.1
+                return CGPoint(
+                    x: (candidate.x * 10).rounded() / 10,
+                    y: (candidate.y * 10).rounded() / 10
+                )
+            }
+        }
+        // Fallback: just return a reasonable non-axis direction
+        return CGPoint(x: 1.5, y: 0.5)
     }
 }
 

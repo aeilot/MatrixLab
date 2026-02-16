@@ -71,9 +71,6 @@ struct ImageLabView: View {
     @State private var greenWeight: Double = 1.0
     @State private var blueWeight: Double = 1.0
 
-    // Editing focus tracking
-    @State private var editingCell: (row: Int, col: Int)?
-
     // Image source
     @State private var selectedSource: ImageSource = .pattern
     @State private var sourceImage: CIImage
@@ -551,8 +548,7 @@ struct ImageLabView: View {
     // MARK: - Kernel Editor Grid
 
     private var kernelEditorSection: some View {
-        let isEditing = editingCell != nil
-        return VStack(spacing: 12) {
+        VStack(spacing: 12) {
             HStack {
                 Image(systemName: "square.grid.3x3")
                     .foregroundColor(accent)
@@ -582,62 +578,28 @@ struct ImageLabView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(
-                        isEditing ? accent.opacity(0.5) : accent.opacity(0.15),
-                        lineWidth: 1
-                    )
+                    .stroke(accent.opacity(0.15), lineWidth: 1)
             )
-            .neonGlow(isEditing ? accent : .clear, radius: isEditing ? 6 : 0)
-            .animation(.easeInOut(duration: 0.3), value: isEditing)
         }
         .labCard(accent: accent)
     }
 
     private func kernelCell(row: Int, col: Int) -> some View {
         let isCenter = row == 1 && col == 1
-        let isFocused = editingCell?.row == row && editingCell?.col == col
-        let value = kernel.values[row][col]
 
-        return TextField(
-            "",
-            text: Binding<String>(
-                get: { formatKernelValue(value) },
-                set: { newText in
-                    if let parsed = Double(newText) {
-                        kernel.values[row][col] = parsed
-                        kernel.name = "Custom"
-                        selectedPresetIndex = -1
-                    }
+        return MatrixStepperField(
+            value: Binding<Double>(
+                get: { kernel.values[row][col] },
+                set: { newVal in
+                    kernel.values[row][col] = newVal
+                    kernel.name = "Custom"
+                    selectedPresetIndex = -1
                 }
-            )
+            ),
+            accentColor: isCenter ? accent : accent.opacity(0.6)
         )
-        .font(MatrixTheme.monoFont(18, weight: isCenter ? .bold : .medium))
-        .foregroundColor(isCenter ? accent : MatrixTheme.textPrimary)
-        .multilineTextAlignment(.center)
-        .keyboardType(.numbersAndPunctuation)
-        .frame(maxWidth: .infinity, minHeight: 48)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(
-                    isCenter
-                        ? accent.opacity(isFocused ? 0.2 : 0.1)
-                        : MatrixTheme.surfaceSecondary.opacity(isFocused ? 0.8 : 0.5)
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(
-                    isCenter
-                        ? accent.opacity(isFocused ? 0.8 : 0.4)
-                        : accent.opacity(isFocused ? 0.4 : 0.1),
-                    lineWidth: isCenter ? 1.5 : 1
-                )
-        )
-        .onTapGesture { editingCell = (row, col) }
-        .accessibilityLabel("Kernel row \(row + 1) column \(col + 1)")
-        .accessibilityValue(formatKernelValue(value))
         .overlay(alignment: .topTrailing) {
-            if value != 0 {
+            if kernel.values[row][col] != 0 {
                 Image(systemName: "info.circle")
                     .font(.system(size: 10))
                     .foregroundColor(accent.opacity(0.5))
@@ -645,6 +607,8 @@ struct ImageLabView: View {
                     .tooltip("Weight applied to pixel at offset (\(row - 1), \(col - 1)) during convolution.")
             }
         }
+        .accessibilityLabel("Kernel row \(row + 1) column \(col + 1)")
+        .accessibilityValue(formatKernelValue(kernel.values[row][col]))
     }
 
     // MARK: - RGB Channel Sliders
