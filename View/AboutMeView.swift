@@ -65,18 +65,18 @@ struct AboutMeView: View {
             .neonGlow(MatrixTheme.neonCyan, radius: 8)
             
             VStack(spacing: 6) {
-                Text("[YOUR NAME]")
+                Text("Chenluo Deng")
                     .font(MatrixTheme.titleFont(26))
                     .foregroundColor(MatrixTheme.textPrimary)
                 
-                Text("[YOUR TITLE / SCHOOL]")
+                Text("Student")
                     .font(MatrixTheme.monoFont(16, weight: .medium))
                     .foregroundColor(MatrixTheme.neonCyan)
                 
                 HStack(spacing: 6) {
                     Image(systemName: "building.columns.fill")
                         .font(.system(size: 14))
-                    Text("[YOUR INSTITUTION]")
+                    Text("Shanghai Jiao Tong University")
                         .font(MatrixTheme.captionFont(15))
                 }
                 .foregroundColor(MatrixTheme.textSecondary)
