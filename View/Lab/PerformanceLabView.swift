@@ -24,23 +24,6 @@ private struct CellCoord: Hashable, Sendable {
     let col: Int
 }
 
-// MARK: - Benchmark Types
-
-private struct BenchmarkInput: Sendable {
-    let sizes: [Int]
-    let blockSize: Int
-}
-
-private struct BenchmarkResult: Sendable {
-    let size: Int
-    let naiveNs: UInt64
-    let blockedNs: UInt64
-}
-
-private struct BenchmarkOutput: Sendable {
-    let results: [BenchmarkResult]
-}
-
 // MARK: - Code Token Types
 
 private enum TokenKind {
@@ -66,14 +49,6 @@ private struct CodeToken {
 
 private struct CodeLine {
     let tokens: [CodeToken]
-}
-
-private struct BenchmarkDisplayResult: Identifiable {
-    let id = UUID()
-    let size: Int
-    let naiveMs: Double
-    let blockedMs: Double
-    var speedup: Double { naiveMs / blockedMs }
 }
 
 // MARK: - Main View
@@ -112,21 +87,36 @@ struct PerformanceLabView: View {
     // Info popup
     @State private var showInfo: Bool = false
 
-    // Benchmark
-    @State private var benchmarkResults: [BenchmarkDisplayResult] = []
-    @State private var isBenchmarking = false
-
-    // Timer for animation stepping
-    @State private var animationTimer = Timer.publish(every: 0.2, on: .main, in: .common)
-    @State private var timerCancellable: (any Cancellable)?
+    // Timer for animation stepping — single stable timer, never replaced
+    private let animationTimer = Timer.publish(every: 0.03, on: .main, in: .common).autoconnect()
+    @State private var lastStepTime: Date = .distantPast
 
     // Pre-computed access sequences
     @State private var sequenceA: [CellCoord] = []
     @State private var sequenceB: [CellCoord] = []
 
-    private let gridSize = 10
-    private let blockSize = 2
-    private let cellSize: CGFloat = 28
+    // Grid configuration
+    @State private var gridSize: Int = 8
+    private static let gridSizeOptions = [6, 8, 10, 12, 16]
+
+    private var blockSize: Int {
+        switch gridSize {
+        case ...6:  return 3   // 6→2 tiles per dim
+        case 7...8: return 4   // 8→2 tiles per dim
+        case 9...10: return 5  // 10→2 tiles per dim
+        case 11...12: return 4 // 12→3 tiles per dim
+        default:    return 4   // 16→4 tiles per dim
+        }
+    }
+    private var cellSize: CGFloat {
+        switch gridSize {
+        case ...6: return 36
+        case 7...8: return 28
+        case 9...10: return 24
+        case 11...12: return 20
+        default: return 16
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -141,7 +131,6 @@ struct PerformanceLabView: View {
                 memoryStripSection
                 cacheLineDetailCard
                 codeDisplaySection
-//                benchmarkSection
                 infoButton
                 ChallengesView(level: .performance)
                 DidYouKnowCard(level: .performance)
@@ -153,13 +142,29 @@ struct PerformanceLabView: View {
         .navigationTitle("Performance Engine")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .onReceive(animationTimer) { _ in
+        .onReceive(animationTimer) { now in
             if isPlaying {
-                advanceStep()
+                let interval = max(0.03, (0.65 - animationSpeed) * 0.4)
+                if now.timeIntervalSince(lastStepTime) >= interval {
+                    lastStepTime = now
+                    advanceStep()
+                }
             }
         }
         .onAppear {
             buildSequences()
+        }
+        .onChange(of: accessMode) { _ in
+            resetAnimation()
+            buildSequences()
+        }
+        .onChange(of: gridSize) { _ in
+            resetAnimation()
+            buildSequences()
+            // Challenge: visualize a 16x16 grid
+            if gridSize >= 16 {
+                ChallengeManager.shared.complete("perf_big")
+            }
         }
         .onDisappear {
             stopAnimation()
@@ -200,7 +205,7 @@ struct PerformanceLabView: View {
     // MARK: - Header
 
     private var headerSection: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 10) {
             Text("Cache Behavior Visualizer")
                 .font(MatrixTheme.titleFont(22))
                 .foregroundColor(MatrixTheme.textPrimary)
@@ -209,20 +214,85 @@ struct PerformanceLabView: View {
                 .font(MatrixTheme.bodyFont(15))
                 .foregroundColor(MatrixTheme.textSecondary)
                 .multilineTextAlignment(.center)
+
+            // Math equation card
+            VStack(spacing: 8) {
+                Text("MATRIX MULTIPLY")
+                    .font(MatrixTheme.captionFont(11))
+                    .foregroundColor(MatrixTheme.level4Color)
+                    .tracking(2)
+
+                // C[i][j] = Σ_k A[i][k] · B[k][j]
+                Text("C\u{1D62}\u{2C7C} = \u{03A3}\u{2096} A\u{1D62}\u{2096} \u{00B7} B\u{2096}\u{2C7C}")
+                    .font(MatrixTheme.monoFont(20, weight: .semibold))
+                    .foregroundColor(MatrixTheme.level4Color)
+
+                HStack(spacing: 16) {
+                    Label("Naive: i, j, k", systemImage: "arrow.right")
+                        .font(MatrixTheme.captionFont(12))
+                        .foregroundColor(MatrixTheme.neonOrange)
+                    Label("Blocked: tiles of B", systemImage: "square.grid.2x2")
+                        .font(MatrixTheme.captionFont(12))
+                        .foregroundColor(MatrixTheme.neonGreen)
+                }
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(MatrixTheme.level4Color.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(MatrixTheme.level4Color.opacity(0.2), lineWidth: 1)
+                    )
+            )
         }
     }
 
     // MARK: - Control Panel
     private var controlPanel: some View {
         VStack(spacing: 14) {
-            // Row 1: Mode picker
-            Picker("Mode", selection: $accessMode) {
-                ForEach(AccessMode.allCases, id: \.self) { mode in
-                    Text(mode == .naive ? "Naive" : "Blocked").tag(mode)
+            // Row 1: Mode picker + size chooser
+            HStack(spacing: 12) {
+                Picker("Mode", selection: $accessMode) {
+                    ForEach(AccessMode.allCases, id: \.self) { mode in
+                        Text(mode == .naive ? "Naive" : "Blocked").tag(mode)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+
+                // Grid size menu
+                Menu {
+                    ForEach(Self.gridSizeOptions, id: \.self) { size in
+                        Button {
+                            gridSize = size
+                        } label: {
+                            HStack {
+                                Text("\(size)\u{00D7}\(size)")
+                                if size == gridSize {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.grid.3x3")
+                            .font(.system(size: 12))
+                        Text("\(gridSize)\u{00D7}\(gridSize)")
+                            .font(MatrixTheme.monoFont(13, weight: .semibold))
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(height: 32)
+                    .foregroundColor(MatrixTheme.level4Color)
+                    .background(MatrixTheme.level4Color.opacity(0.12))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(MatrixTheme.level4Color.opacity(0.3), lineWidth: 1))
+                }
+                .accessibilityLabel("Grid size: \(gridSize) by \(gridSize)")
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
 
             // Row 2: Playback controls + step mode + sound
             HStack(spacing: 12) {
@@ -334,7 +404,7 @@ struct PerformanceLabView: View {
 
     /// Human-readable speed label based on animation speed slider value
     private var speedLabel: String {
-        let normalized = 1.0 - ((animationSpeed - 0.05) / 0.55) // 0 = slow, 1 = fast
+        let normalized = (animationSpeed - 0.05) / 0.55 // 0 = slow, 1 = fast
         if normalized > 0.85 { return "4x" }
         if normalized > 0.65 { return "3x" }
         if normalized > 0.45 { return "2x" }
@@ -1113,182 +1183,6 @@ struct PerformanceLabView: View {
         .padding(.bottom, 8)
     }
 
-//    // MARK: - Benchmark Section
-//
-//    private var benchmarkSection: some View {
-//        VStack(alignment: .leading, spacing: 12) {
-//            Text("Real Benchmark")
-//                .font(MatrixTheme.captionFont(13))
-//                .foregroundColor(MatrixTheme.textSecondary)
-//
-//            Button {
-//                runBenchmark()
-//            } label: {
-//                HStack(spacing: 8) {
-//                    if isBenchmarking {
-//                        ProgressView()
-//                            .tint(MatrixTheme.level4Color)
-//                    } else {
-//                        Image(systemName: "gauge.with.dots.needle.67percent")
-//                            .foregroundColor(MatrixTheme.level4Color)
-//                    }
-//                    Text(isBenchmarking ? "Running..." : "Run Benchmark")
-//                        .font(MatrixTheme.bodyFont(16))
-//                        .foregroundColor(MatrixTheme.level4Color)
-//                }
-//                .frame(maxWidth: .infinity)
-//                .padding(.vertical, 10)
-//                .background(
-//                    RoundedRectangle(cornerRadius: 8)
-//                        .fill(MatrixTheme.level4Color.opacity(0.15))
-//                )
-//            }
-//            .disabled(isBenchmarking)
-//            .accessibilityLabel("Run real matrix multiplication benchmark")
-//
-//            if !benchmarkResults.isEmpty {
-//                VStack(spacing: 0) {
-//                    // Header row
-//                    HStack {
-//                        Text("Size")
-//                            .frame(width: 50, alignment: .leading)
-//                        Text("Naive")
-//                            .frame(maxWidth: .infinity, alignment: .trailing)
-//                        Text("Blocked")
-//                            .frame(maxWidth: .infinity, alignment: .trailing)
-//                        Text("Speedup")
-//                            .frame(width: 60, alignment: .trailing)
-//                    }
-//                    .font(MatrixTheme.captionFont(12))
-//                    .foregroundColor(MatrixTheme.textMuted)
-//                    .padding(.bottom, 6)
-//
-//                    ForEach(benchmarkResults) { result in
-//                        HStack {
-//                            Text("\(result.size)×\(result.size)")
-//                                .frame(width: 50, alignment: .leading)
-//                            Text(formatMs(result.naiveMs))
-//                                .foregroundColor(MatrixTheme.neonOrange)
-//                                .frame(maxWidth: .infinity, alignment: .trailing)
-//                            Text(formatMs(result.blockedMs))
-//                                .foregroundColor(MatrixTheme.neonGreen)
-//                                .frame(maxWidth: .infinity, alignment: .trailing)
-//                            Text(String(format: "%.1fx", result.speedup))
-//                                .foregroundColor(result.speedup > 1 ? MatrixTheme.neonGreen : MatrixTheme.textSecondary)
-//                                .frame(width: 60, alignment: .trailing)
-//                        }
-//                        .font(MatrixTheme.monoFont(15, weight: .medium))
-//                        .padding(.vertical, 4)
-//
-//                        if result.id != benchmarkResults.last?.id {
-//                            Divider()
-//                                .background(MatrixTheme.gridLine)
-//                        }
-//                    }
-//                }
-//                .padding(.top, 4)
-//            }
-//        }
-//        .labCard(accent: MatrixTheme.level4Color)
-//    }
-//
-    private func formatMs(_ ms: Double) -> String {
-        if ms < 1 {
-            return String(format: "%.2fms", ms)
-        } else if ms < 100 {
-            return String(format: "%.1fms", ms)
-        } else {
-            return String(format: "%.0fms", ms)
-        }
-    }
-
-    private func runBenchmark() {
-        isBenchmarking = true
-        Task {
-            let input = BenchmarkInput(sizes: [64, 128, 256, 512], blockSize: 32)
-            let output: BenchmarkOutput = await Task.detached(priority: .userInitiated) {
-                return Self.runBenchmarks(input: input)
-            }.value
-            benchmarkResults = output.results.map { r in
-                BenchmarkDisplayResult(
-                    size: r.size,
-                    naiveMs: Double(r.naiveNs) / 1_000_000,
-                    blockedMs: Double(r.blockedNs) / 1_000_000
-                )
-            }
-            isBenchmarking = false
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            // Challenge detection
-            ChallengeManager.shared.complete("perf_run")
-            if benchmarkResults.contains(where: { $0.speedup >= 2.0 }) {
-                ChallengeManager.shared.complete("perf_blocked")
-            }
-            if benchmarkResults.contains(where: { $0.size == 512 }) {
-                ChallengeManager.shared.complete("perf_big")
-            }
-        }
-    }
-
-    private nonisolated static func runBenchmarks(input: BenchmarkInput) -> BenchmarkOutput {
-        var results: [BenchmarkResult] = []
-
-        for n in input.sizes {
-            // Create matrices with deterministic fill
-            var a = [Double](repeating: 0, count: n * n)
-            var b = [Double](repeating: 0, count: n * n)
-            for i in 0..<(n * n) {
-                a[i] = Double(i % 17) / 17.0
-                b[i] = Double(i % 13) / 13.0
-            }
-
-            // Naive: triple loop, row-major
-            let naiveStart = DispatchTime.now()
-            var c1 = [Double](repeating: 0, count: n * n)
-            for i in 0..<n {
-                for j in 0..<n {
-                    var sum = 0.0
-                    for k in 0..<n {
-                        sum += a[i * n + k] * b[k * n + j]
-                    }
-                    c1[i * n + j] = sum
-                }
-            }
-            _ = c1  // prevent optimization
-            let naiveEnd = DispatchTime.now()
-            let naiveNs = naiveEnd.uptimeNanoseconds - naiveStart.uptimeNanoseconds
-
-            // Blocked: tiled loop
-            let bs = input.blockSize
-            let blockedStart = DispatchTime.now()
-            var c2 = [Double](repeating: 0, count: n * n)
-            for ii in stride(from: 0, to: n, by: bs) {
-                for jj in stride(from: 0, to: n, by: bs) {
-                    for kk in stride(from: 0, to: n, by: bs) {
-                        let iEnd = min(ii + bs, n)
-                        let jEnd = min(jj + bs, n)
-                        let kEnd = min(kk + bs, n)
-                        for i in ii..<iEnd {
-                            for j in jj..<jEnd {
-                                var sum = c2[i * n + j]
-                                for k in kk..<kEnd {
-                                    sum += a[i * n + k] * b[k * n + j]
-                                }
-                                c2[i * n + j] = sum
-                            }
-                        }
-                    }
-                }
-            }
-            _ = c2  // prevent optimization
-            let blockedEnd = DispatchTime.now()
-            let blockedNs = blockedEnd.uptimeNanoseconds - blockedStart.uptimeNanoseconds
-
-            results.append(BenchmarkResult(size: n, naiveNs: naiveNs, blockedNs: blockedNs))
-        }
-
-        return BenchmarkOutput(results: results)
-    }
-
     // MARK: - Sequence Generation
 
     private func buildSequences() {
@@ -1307,12 +1201,10 @@ struct PerformanceLabView: View {
     /// For each element C[i][j], we iterate k=0..<N:
     ///   A[i][k] (row-major — sequential, mostly hits)
     ///   B[k][j] (column access — jumps by N each step, lots of misses)
-    /// We generate a shortened sequence for visual clarity (first few i,j combos).
     private func buildNaiveSequences() {
         let n = gridSize
-        // Show a subset to keep animation reasonable: first 3 rows of C, first 3 cols
-        for i in 0..<min(3, n) {
-            for j in 0..<min(3, n) {
+        for i in 0..<n {
+            for j in 0..<n {
                 for k in 0..<n {
                     sequenceA.append(CellCoord(row: i, col: k))
                     sequenceB.append(CellCoord(row: k, col: j))
@@ -1321,51 +1213,37 @@ struct PerformanceLabView: View {
         }
     }
 
-    /// Blocked: Both A and B are accessed in 2x2 tile blocks.
-    /// For each block of C, we iterate over blocks of A and B:
-    ///   Within each block, access is sequential (all cache hits).
+    /// Blocked: Both A and B are accessed in tile blocks.
+    /// For each block of C[ii..ii+bs][jj..jj+bs], we iterate over k-blocks:
+    ///   For each (i, j, k) within the tile, we access A[i][k] and B[k][j] together.
+    ///   Within each block, accesses are spatially local (cache-friendly).
     private func buildBlockedSequences() {
         let n = gridSize
         let bs = blockSize
 
-        // Show a subset: first 3x3 block tiles
-        let tilesI = min(3, n / bs)
-        let tilesJ = min(3, n / bs)
-        let tilesK = min(5, n / bs)
+        let tilesI = (n + bs - 1) / bs
+        let tilesJ = (n + bs - 1) / bs
+        let tilesK = (n + bs - 1) / bs
 
         for bi in 0..<tilesI {
             for bj in 0..<tilesJ {
                 for bk in 0..<tilesK {
-                    // Access within tiles — sequential, compact
+                    // Within each tile: access A[i][k] and B[k][j] in lockstep
                     for ii in 0..<bs {
-                        for kk in 0..<bs {
-                            let aRow = bi * bs + ii
-                            let aCol = bk * bs + kk
-                            if aRow < n && aCol < n {
-                                sequenceA.append(CellCoord(row: aRow, col: aCol))
-                            }
-                        }
-                    }
-                    for kk in 0..<bs {
                         for jj in 0..<bs {
-                            let bRow = bk * bs + kk
-                            let bCol = bj * bs + jj
-                            if bRow < n && bCol < n {
-                                sequenceB.append(CellCoord(row: bRow, col: bCol))
+                            for kk in 0..<bs {
+                                let i = bi * bs + ii
+                                let j = bj * bs + jj
+                                let k = bk * bs + kk
+                                if i < n && j < n && k < n {
+                                    sequenceA.append(CellCoord(row: i, col: k))
+                                    sequenceB.append(CellCoord(row: k, col: j))
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-
-        // Equalize lengths
-        let maxLen = max(sequenceA.count, sequenceB.count)
-        while sequenceA.count < maxLen {
-            sequenceA.append(sequenceA.last ?? CellCoord(row: 0, col: 0))
-        }
-        while sequenceB.count < maxLen {
-            sequenceB.append(sequenceB.last ?? CellCoord(row: 0, col: 0))
         }
     }
 
@@ -1374,15 +1252,11 @@ struct PerformanceLabView: View {
     private func startAnimation() {
         guard !sequenceA.isEmpty else { return }
         isPlaying = true
-        let interval = max(0.03, animationSpeed * 0.4)
-        animationTimer = Timer.publish(every: interval, on: .main, in: .common)
-        timerCancellable = animationTimer.connect()
+        lastStepTime = .now
     }
 
     private func stopAnimation() {
         isPlaying = false
-        timerCancellable?.cancel()
-        timerCancellable = nil
     }
 
     private func resetAnimation() {
@@ -1403,9 +1277,20 @@ struct PerformanceLabView: View {
     private func advanceStep() {
         guard !sequenceA.isEmpty, !sequenceB.isEmpty else { return }
 
-        // Loop or stop at end
+        // Stop at end — clear highlights so it doesn't look stuck
         if stepIndex >= sequenceA.count || stepIndex >= sequenceB.count {
             stopAnimation()
+            activeCellA = nil
+            activeCellB = nil
+            // Challenge: completed a full animation run
+            ChallengeManager.shared.complete("perf_play")
+            let total = cacheHits + cacheMisses
+            if accessMode == .blocked && total > 0 {
+                let hitRate = Double(cacheHits) / Double(total)
+                if hitRate >= 0.7 {
+                    ChallengeManager.shared.complete("perf_blocked")
+                }
+            }
             return
         }
 

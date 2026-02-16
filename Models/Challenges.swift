@@ -75,9 +75,9 @@ enum ChallengeData {
     ]
 
     static let performance: [LabChallenge] = [
-        LabChallenge(id: "perf_run", labLevel: .performance, title: "First Run", description: "Run a benchmark at any size", icon: "play.circle"),
-        LabChallenge(id: "perf_blocked", labLevel: .performance, title: "Speed Demon", description: "See blocked beat naive by 2x+", icon: "hare"),
-        LabChallenge(id: "perf_big", labLevel: .performance, title: "Go Big", description: "Benchmark at size 512", icon: "arrow.up.right"),
+        LabChallenge(id: "perf_play", labLevel: .performance, title: "First Run", description: "Play the cache animation", icon: "play.circle"),
+        LabChallenge(id: "perf_blocked", labLevel: .performance, title: "Speed Demon", description: "Watch blocked mode finish with 70%+ hit rate", icon: "hare"),
+        LabChallenge(id: "perf_big", labLevel: .performance, title: "Go Big", description: "Visualize a 16\u{00D7}16 grid", icon: "arrow.up.right"),
     ]
 
     static func challenges(for level: LabLevel) -> [LabChallenge] {
