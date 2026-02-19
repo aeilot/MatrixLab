@@ -9,7 +9,6 @@ struct AboutMeView: View {
                 VStack(spacing: MatrixTheme.spacing * 2) {
                     profileSection
                     bioSection
-                    researchConnectionsSection
                     footerSection
                 }
                 .padding(.horizontal, MatrixTheme.cardPadding)
@@ -101,17 +100,30 @@ struct AboutMeView: View {
             }
             
             VStack(alignment: .leading, spacing: 12) {
-                Text("[Describe what first sparked your interest in mathematics, coding, or technology. What moment made you realize you wanted to build things?]")
-                    .font(MatrixTheme.bodyFont(17))
-                    .foregroundColor(MatrixTheme.textSecondary)
-                    .lineSpacing(4)
+                Text("""
+Linear Algebra is widely used in Computer Science, serving as the foundation of machine learning and AI. Yet, in my college Linear Algebra course, the subject was taught as a series of abstract symbol manipulations. The emphasis was placed on the algebra, rather than building intuition that would be necessary for learners. Students memorize formulas for determinants and eigenvalues without understanding what they actually mean geometrically.
+""")
+                .font(MatrixTheme.bodyFont(17))
+                .foregroundColor(MatrixTheme.textSecondary)
+                .lineSpacing(4)
                 
-                Text("[Explain why you built MatrixLab specifically. What problem did you want to solve? What insight did you want to share with others?]")
-                    .font(MatrixTheme.bodyFont(17))
-                    .foregroundColor(MatrixTheme.textSecondary)
-                    .lineSpacing(4)
+                Text("""
+Thankfully, 3blue1brown's visualization helped me a lot in building visual understanding. MatrixLab was inspired by his videos. I wanted to take a step further, making the visualizations interactive. Learners could literally touch basis vectors and watch the grid warp, build their own image filters by editing convolution kernels, and see cache memory in action. The goal is to unbox the "black box" of matrix operations and make linear algebra an intuitive, visual experience.
+""")
+                .font(MatrixTheme.bodyFont(17))
+                .foregroundColor(MatrixTheme.textSecondary)
+                .lineSpacing(4)
                 
-                Text("[Share your vision. Where do you see yourself going? How does this project connect to your broader goals?]")
+                Text("""
+                    The app supports progressive learning through four labs that build on each other. The learner moves from visual intuition in the Geometry Lab to applications in the Image Filter Workshop, culminating in the Performance Engine where users see how theoretical understanding translates to real-world optimization.
+                    """)
+                .font(MatrixTheme.bodyFont(17))
+                .foregroundColor(MatrixTheme.textSecondary)
+                .lineSpacing(4)
+                
+                Text("""
+                    I always believe the true power of technology comes when it serves the community. By developing MatrixLab, I hope to empower educators to create their own interactive learning tools, and inspire students to explore the beauty of linear algebra beyond the classroom. I plan to become an engineer  that builds tools and games that empower people and makes a positive impact on the world. This project is just the beginning of that journey.
+                    """)
                     .font(MatrixTheme.bodyFont(17))
                     .foregroundColor(MatrixTheme.textSecondary)
                     .lineSpacing(4)
@@ -120,50 +132,7 @@ struct AboutMeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .labCard(accent: MatrixTheme.neonCyan)
     }
-    
-    // MARK: - Research Connections
-    
-    private var researchConnectionsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Label {
-                Text("Matrices in My Research")
-                    .font(MatrixTheme.monoFont(19, weight: .bold))
-                    .foregroundColor(MatrixTheme.textPrimary)
-            } icon: {
-                Image(systemName: "flask.fill")
-                    .foregroundColor(MatrixTheme.neonCyan)
-            }
-            
-            VStack(spacing: 12) {
-                ResearchConnectionCard(
-                    matrixTopic: "Geometric Transforms",
-                    application: "[Your application of transforms]",
-                    detail: "[Describe how you use geometric transforms in your work or studies.]",
-                    icon: "rectangle.on.rectangle.angled",
-                    color: MatrixTheme.neonCyan
-                )
-                
-                ResearchConnectionCard(
-                    matrixTopic: "Image Processing",
-                    application: "[Your application of convolution]",
-                    detail: "[Describe how you use convolution or image processing in your work or studies.]",
-                    icon: "camera.filters",
-                    color: MatrixTheme.neonMagenta
-                )
-                
-                ResearchConnectionCard(
-                    matrixTopic: "Performance",
-                    application: "[Your application of optimization]",
-                    detail: "[Describe how you use optimization or performance techniques in your work or studies.]",
-                    icon: "square.grid.3x3.fill",
-                    color: MatrixTheme.neonGreen
-                )
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .labCard(accent: MatrixTheme.neonCyan)
-    }
-    
+        
     // MARK: - Footer
     
     private var footerSection: some View {
@@ -182,7 +151,7 @@ struct AboutMeView: View {
                     .foregroundColor(.orange)
             }
             
-            Text("Built with SwiftUI for Swift Student Challenge 2025")
+            Text("Built with SwiftUI for Swift Student Challenge 2026")
                 .font(MatrixTheme.captionFont(14))
                 .foregroundColor(MatrixTheme.textMuted)
                 .multilineTextAlignment(.center)
