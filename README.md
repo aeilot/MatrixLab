@@ -72,11 +72,6 @@ View/
      └─ PerformanceLabView.swift
 ```
 
-## Author
-
-**Chenluo Deng**  
-Shanghai Jiao Tong University
-
 ---
 
 Even though this submission was not selected, it represents a serious effort to make core CS math concepts more understandable through interaction, visualization, and thoughtful educational UX.
